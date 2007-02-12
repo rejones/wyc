@@ -1,0 +1,88 @@
+<html>
+<head>
+<title>WYC racing</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"></head>
+
+<body bgcolor="#FFFFFF" text="#000000">
+<h1>Whitstable Yacht Club Racing Schedule</h1>
+<p>WYC's <a href="http://www.wyc.org.uk">webpages</a> include a <a href="http://www.wyc.org.uk/flattened/racing_schedule.html">schedule</a> 
+  which is great when you have access to the web.</p>
+<p>But those like me who live by their Palm organiser would like to have the schedule 
+  in their pocket. So here are two Palm Datebook versions of 
+  the schedule that you can import via the Palm desktop or whatever you use.</p>
+<ul>
+  <li><a href="wyc07.dba">.dba</a> format (e.g. for the Palm desktop on Windows).</li>
+  <li><a href="wyc07.vcs">vCal</a> format (e.g. for the Palm desktop on MacOS X).</li>
+</ul>
+<p>Richard Jones<br>
+11 February 2007 </p>
+<h2>For techies only</h2>
+<p>Here's how I constructed the Palm version. The details depend on whether you use need .dba or vCal format. </p>
+<p>You'll need (1) Microsoft Excel, 
+  (2) Perl and, on Windows only, (3) a little tool called convdb. </p>
+<ol>
+  <li>First, you need  to grab the schedule from the WYC website.<br>
+    Excel is very good at grabbing tables from the web (to my embarrassment, my 
+    son taught me this!). Use <code>Data&gt;Import External Data&gt;New Web Query</code>, 
+    type in the url (e.g. <code>http://www.wyc.org.uk/flattened/racing_schedule.html</code>) 
+    and select the table you want (your mileage may vary depending on the version 
+    of Excel you have).<br>
+  Here's a  <a href="WYC_racing_web_query">web query</a> for Excel that I made before. 
+  <br>&nbsp;
+  </li>
+  <li>Clean the data to get rid of headers, incomplete records, typos etc. From experience, you need to make sure that days and dates have not been joined together (e.g. &quot;Sun12&quot;). Brackets are probably a bad idea too - remove them. But don't introduce commas as we are going to save the file as a csv file. 
+  <br>&nbsp;
+  </li>
+  <li>Save the file as a csv file, say <code>wyc07.csv</code>.</li>
+</ol>
+<p>The rest of the procedure depends on whether you want the schedule in .dba format (Windows) or vCal format (MacOS X). vCal is much easier.</p>
+<h3>vCal (MacOS X)</h3>
+<ol start="4">
+  <li>Run this little Perl <a href="wyc.pl">script</a> to convert the schedule to vCal format. Note the extension, <code>.vcs</code>.
+    You'll need to have <a href="http://www.cpan.org">Perl</a> <a href="wyc.pl"></a> installed obviously.
+    <ul>
+      <li><code>wyc.pl -v &lt;wyc07.csv &gt;wyc07.vcs</code></li>
+    </ul>
+    <br>
+    You can also add a 
+    <em>note</em> to each entry. Notes are used in the (excellent) <a href="http://www.pimlicosoftware.com/">DateBk</a> calendar to format entries (e.g. with text and background colour, customised icon). There are two ways to do this:
+    <ul>
+      <li>To use my built-in format:  <code>wyc.pl -v -n &lt;wyc07.csv &gt;wyc07.vcs</code></li>
+      <li>To use your own format: <code>wyc.pl -v -n <em>string</em> &lt;wyc07.csv &gt;wyc07.vcs</code><br>
+    where <em>string</em> is the string your format needs (experiment with DateBk to see what it adds to the note field; you'll probably need to examine the note in the Palm's built-in calendar).<br>
+      </li>
+    </ul>
+  </li>
+</ol>
+<h3>.dba (Windows)  </h3>
+<ol start="4">
+  <li>Run this little Perl <a href="wyc.pl">script</a>.
+    You'll need to have <a href="http://www.cpan.org">Perl</a> <a href="wyc.pl"></a> installed obviously.
+    <ul>
+      <li>For .dba (Windows): <code><br>
+        wyc.pl &lt; wyc07.csv &gt; wyc07.txt</code><br>
+      </li>
+    </ul>
+    <br>
+    You can also add a 
+    <em>note</em> to each entry. Notes are used in the (excellent) <a href="http://www.pimlicosoftware.com/">DateBk</a> calendar to format entries (e.g. with text and background colour, customised icon). There are two ways to do this:
+    <ul>
+      <li>To use my built-in format:  <code>wyc.pl -n &lt;wyc07.csv &gt;wyc07.txt</code></li>
+      <li>To use your own format: <code>wyc.pl -n <em>string</em> &lt;wyc07.csv &gt;wyc07.txt</code><br>
+    where <em>string</em> is the string your format needs (experiment with DateBk to see what it adds to the note field; you'll probably need to examine the note in the Palm's built-in calendar).<br>
+    <br>
+      </li>
+    </ul>
+  </li>
+  <li>There's one further step for .dba: you need to use a little tool called <code>convdb</code> to convert the text version to a Palm .dba version 
+    which will be called <code>output.dba</code>. convdb. I got a copy from <a href="http://www.geocities.com/SiliconValley/Way/4696/">here</a>. 
+  It's a pretty flexible if rather fragile tool for converting from plain text 
+  to the Palm .dba format.
+    <ul>
+      <li><code>convdb -h 2 wyc07.txt</code></li>
+      <li>Rename <code>output.dba</code> to something sensible, e.g. <code>wyc07.dba</code></li>
+    </ul>
+  </li>
+</ol>
+</body>
+</html>
