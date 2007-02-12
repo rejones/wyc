@@ -5,7 +5,8 @@
 
 <body bgcolor="#FFFFFF" text="#000000">
 <h1>Whitstable Yacht Club Racing Schedule</h1>
-<p>WYC's <a href="http://www.wyc.org.uk">webpages</a> include a <a href="http://www.wyc.org.uk/flattened/racing_schedule.html">schedule</a> 
+<p>WYC's <a href="http://www.wyc.org.uk">webpages</a> include a
+<a href="http://www.wyc.org.uk/flattened/racing_schedule.html">schedule</a> 
   which is great when you have access to the web.</p>
 <p>But those like me who live by their Palm organiser would like to have the schedule 
   in their pocket. So here are two Palm Datebook versions of 
@@ -14,10 +15,20 @@
   <li><a href="wyc07.dba">.dba</a> format (e.g. for the Palm desktop on Windows).</li>
   <li><a href="wyc07.vcs">vCal</a> format (e.g. for the Palm desktop on MacOS X).</li>
 </ul>
+
 <p>Richard Jones<br>
 11 February 2007 </p>
+
+<p><strong>Note</strong> Last year, I used the
+.dba format. This year I am using the vCal format (as I've ditched Windows for
+a Mac). So the vCal format is fully tested, the .dba one is not. The worst that
+should happen is that you might need to edit some entries.
+Use entirely at your own risk.
+
 <h2>For techies only</h2>
+
 <p>Here's how I constructed the Palm version. The details depend on whether you use need .dba or vCal format. </p>
+
 <p>You'll need (1) Microsoft Excel, 
   (2) Perl and, on Windows only, (3) a little tool called convdb. </p>
 <ol>
@@ -35,7 +46,9 @@
   </li>
   <li>Save the file as a csv file, say <code>wyc07.csv</code>.</li>
 </ol>
+
 <p>The rest of the procedure depends on whether you want the schedule in .dba format (Windows) or vCal format (MacOS X). vCal is much easier.</p>
+
 <h3>vCal (MacOS X)</h3>
 <ol start="4">
   <li>Run this little Perl <a href="wyc.pl">script</a> to convert the schedule to vCal format. Note the extension, <code>.vcs</code>.
@@ -54,6 +67,7 @@
     </ul>
   </li>
 </ol>
+
 <h3>.dba (Windows)  </h3>
 <ol start="4">
   <li>Run this little Perl <a href="wyc.pl">script</a>.
@@ -74,6 +88,7 @@
       </li>
     </ul>
   </li>
+
   <li>There's one further step for .dba: you need to use a little tool called <code>convdb</code> to convert the text version to a Palm .dba version 
     which will be called <code>output.dba</code>. convdb. I got a copy from <a href="http://www.geocities.com/SiliconValley/Way/4696/">here</a>. 
   It's a pretty flexible if rather fragile tool for converting from plain text 
@@ -84,5 +99,6 @@
     </ul>
   </li>
 </ol>
+
 </body>
 </html>
