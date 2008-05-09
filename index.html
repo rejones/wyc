@@ -12,18 +12,19 @@
   in their pocket. So here are two Palm Datebook versions of 
   the schedule that you can import via the Palm desktop or whatever you use.</p>
 <ul>
-  <li><a href="wyc07.dba">.dba</a> format (e.g. for the Palm desktop on Windows).</li>
-  <li><a href="wyc07.vcs">vCal</a> format (e.g. for the Palm desktop on MacOS X).</li>
+  <li>.dba format (e.g. for the Palm desktop on Windows).</li>
+  <li><a href="wyc08.vcs">vCal</a> format (e.g. for the Palm desktop on MacOS X).</li>
 </ul>
 
 <p>Richard Jones<br>
-11 February 2007 </p>
+9 May 2008</p>
 
-<p><strong>Note</strong> Last year, I used the
-.dba format. This year I am using the vCal format (as I've ditched Windows for
-a Mac). So the vCal format is fully tested, the .dba one is not. The worst that
-should happen is that you might need to edit some entries.
-Use entirely at your own risk.
+<p><strong>Note</strong> Up to 2006, I used the
+.dba format. From 2007 I have been using the vCal format (as I've ditched Windows for
+a Mac). So only a schedule in vCal format is provided here.
+If you want the .dba version, instructions on how to build your own are given
+below. If sufficient people ask me, then I'll build one
+and provide it here.
 
 <h2>For techies only</h2>
 
@@ -51,6 +52,8 @@ Use entirely at your own risk.
 
 <h3>vCal (MacOS X)</h3>
 <ol start="4">
+  <li>Make sure the line breaks are correct. I have found that Excel saves csv files
+  in just one long line (the curse of different newline conventions). My script likes one event per line.
   <li>Run this little Perl <a href="wyc.pl">script</a> to convert the schedule to vCal format. Note the extension, <code>.vcs</code>.
     You'll need to have <a href="http://www.cpan.org">Perl</a> <a href="wyc.pl"></a> installed obviously.
     <ul>
@@ -66,6 +69,7 @@ Use entirely at your own risk.
       </li>
     </ul>
   </li>
+  <li>Now import the vCal file into Palm Desktop or whatever you use.</li>
 </ol>
 
 <h3>.dba (Windows)  </h3>
@@ -98,6 +102,7 @@ Use entirely at your own risk.
       <li>Rename <code>output.dba</code> to something sensible, e.g. <code>wyc07.dba</code></li>
     </ul>
   </li>
+  <li>Now import the dba file into Palm Desktop or whatever you use.</li>
 </ol>
 
 </body>

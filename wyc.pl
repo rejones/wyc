@@ -61,8 +61,10 @@ my $month = 1;
 while (<>) {
   my @line = split /,/;
   my $date = $line[$DAY];
-  if (exists $months{$date}) {
-    $month = $months{$date};
+  my $dateUC = uc $date;
+  if (exists $months{$dateUC}) {
+    $month = $months{$dateUC};
+    warn $_;
     last;
   }
 }
@@ -76,12 +78,14 @@ if ($opt_v) {
 
 # Process the source file
 while (<>) {
+  chomp;
   my @line = split /,/;
   my $date = $line[$DAY];
 
   # update the month
-  if (exists $months{$date}) {
-    $month = $months{$date};
+  my $dateUC = uc $date;
+  if (exists $months{$dateUC}) {
+    $month = $months{$dateUC};
     next;
   }
 
@@ -106,10 +110,11 @@ while (<>) {
   else { warn 'BAD RECORD '.$_; next; }
   
   #print the record
+  my $highwater = sprintf "%04d", $line[$HW];
   if ($opt_v) {
-    printVCAL($num, $month, $hour, $min, $line[$EVENT], $line[$HW]);
+    printVCAL($num, $month, $hour, $min, $line[$EVENT], $highwater);
   } else {
-    printDBA($num, $month, $hour, $min, $line[$EVENT], $line[$HW]);
+    printDBA($num, $month, $hour, $min, $line[$EVENT], $highwater);
   }
 }
 
@@ -183,7 +188,7 @@ sub help($) {
   print <<"EOH"
 $usage
 Convert CSV output grabbed by Excel from WYC racing schedule
-to file suitable for input to convdb.
+to file suitable for input to vCal or convdb.
 Options:
   -h 		Print this help.
   -n [note]	Add note to each entry in the calendar. If no note given, use default for REJ's DateBk5.
