@@ -29,13 +29,17 @@ my $HW = 1;
 my $START = 2;
 my $EVENT = 3; 
 my $DURATION = 3;
+my $ADVANCE = 2; # 2 hours warning
 
 # This note provide a colour and icon for REJ's DateBk5 calendar
 my $NOTE = '##@@PC@@@A@@@@@@@@p=0D=0A';
 
 sub help($);
 sub printDBAhdr();
+sub printVCALhdr();
 sub printDBA($$$$$$);
+sub printVCAL($$$$$$);
+sub printEOVCAL();
 
 
 
@@ -164,8 +168,22 @@ sub printVCAL ($$$$$$){
   my $note = defined $opt_n ? $NOTE : ''; 
   my $start = $hour.$min;
   my $day = sprintf "%4d%02d%02d", $YEAR, $month, $num;
-  my $end = sprintf "%02d%s", $hour+$DURATION, $min; # assume $hour+$DURATION < 2400
-  my $alarm = sprintf "%02d%s", $hour-1, $min;       # assume nothing starts before 01:00!
+  my $end_hour = $hour + $DURATION;
+  my $end;
+  if ($end_hour >= 24) {        # assume $hour+$DURATION < 2400
+    warn "Event spans midnight! $event\n";
+    $end = "2359";
+  } else {
+    $end = sprintf "%02d%s", $end_hour, $min;
+  }
+  my $alarm_hour = $hour - $ADVANCE;
+  my $alarm;
+  if ($alarm_hour < 0) {       # assume nothing starts before ADVANCE:00!
+    warn "Alarm set for previous day: $event\n";
+    $alarm = "0000";
+  } else { 
+    $alarm = sprintf "%02d%s", $alarm_hour, $min;
+  }
   print <<"EOV"
 BEGIN:VEVENT
 SUMMARY:WYC $event$hw
