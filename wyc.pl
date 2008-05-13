@@ -68,7 +68,6 @@ while (<>) {
   my $dateUC = uc $date;
   if (exists $months{$dateUC}) {
     $month = $months{$dateUC};
-    warn $_;
     last;
   }
 }
