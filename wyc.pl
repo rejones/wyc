@@ -6,9 +6,9 @@
 
 use strict;
 use Getopt::Long;
-use vars qw($opt_h $opt_n $opt_v);
+use vars qw($opt_h $opt_n $opt_v $opt_z);
 
-my $usage = "Usage: wyc.pl [-h] [-v] [-n [note]] [year] < in.csv > out.txt";
+my $usage = "Usage: wyc.pl [-h] [-v] [-z] [-n [note]] [year] < in.csv > out.txt";
 
 my %months = (
   "JANUARY" => 1,
@@ -45,7 +45,9 @@ sub printEOVCAL();
 
 GetOptions("h"   => \$opt_h,
            "n:s" => \$opt_n,
-           "v"   => \$opt_v);
+           "v"   => \$opt_v,
+           "z"   => \$opt_z
+	   );
 if ($opt_h) {
   help($usage);
   exit 0;
@@ -163,7 +165,8 @@ sub printVCAL ($$$$$$){
   my($num, $month, $hour, $min, $event, $highwater) = @_;
   my $hw = $highwater eq '' ? '' : ", HW=$highwater";
   my $T = 'T';
-  my $OOZ = '00Z';
+  # 'Z' means UTC rather than local time
+  my $OOZ = defined $opt_z ? '00Z' : '00';
   my $note = defined $opt_n ? $NOTE : ''; 
   my $start = $hour.$min;
   my $day = sprintf "%4d%02d%02d", $YEAR, $month, $num;
@@ -210,6 +213,7 @@ Options:
   -h 		Print this help.
   -n [note]	Add note to each entry in the calendar. If no note given, use default for REJ's DateBk5.
   -v		Use vCal format rather than .dba.
+  -z		Use UTC rather than local time
 EOH
 } 
   
