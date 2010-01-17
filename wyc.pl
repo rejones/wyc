@@ -1,12 +1,13 @@
 #!/usr/bin/perl
 
-# Convert WYC racing schedule into format that can be loaded into Palm DateBook
+# Convert WYC racing schedule into format that can be loaded into a calendar.
 # Two formats are provided, one suitable for converting to .dba with convdb on Windows,
-# and one vCal format for importing directly into the MacOS X Palm Desktop.
+# and a vCal format for importing directly into calendars that support this
+# format.
 
 use strict;
 use Getopt::Long;
-use vars qw($opt_h $opt_n $opt_v $opt_z);
+use vars qw($opt_h $opt_n $opt_d $opt_z);
 
 my $usage = "Usage: wyc.pl [-h] [-v] [-z] [-n [note]] [year] < in.csv > out.txt";
 
@@ -32,7 +33,8 @@ my $DURATION = 3;
 my $ADVANCE = 2; # 2 hours warning
 
 # This note provide a colour and icon for REJ's DateBk5 calendar
-my $NOTE = '##@@PC@@@A@@@@@@@@p=0D=0A';
+#my $NOTE = '##@@PC@@@A@@@@@@@@p=0D=0A';
+my $note = '';
 
 sub help($);
 sub printDBAhdr();
@@ -45,7 +47,7 @@ sub printEOVCAL();
 
 GetOptions("h"   => \$opt_h,
            "n:s" => \$opt_n,
-           "v"   => \$opt_v,
+           "d"   => \$opt_d,
            "z"   => \$opt_z
 	   );
 if ($opt_h) {
@@ -53,9 +55,7 @@ if ($opt_h) {
   exit 0;
 }
 
-if ($opt_n) {
-  $NOTE = $opt_n unless $opt_n eq '';
-}
+$note = $opt_n if defined $opt_n;
 
 my $YEAR = (@ARGV == 1) ?
              shift @ARGV :
@@ -75,10 +75,10 @@ while (<>) {
 }
 
 # Print header
-if ($opt_v) {
-  printVCALhdr();
-} else {
+if ($opt_d) {
   printDBAhdr();
+} else {
+  printVCALhdr();
 }
 
 # Process the source file
@@ -102,7 +102,7 @@ while (<>) {
   	$day = $1;
   	$num = $2;
   }
-  else {warn 'BAD RECORD '.$_; next; }
+  else {warn "BAD RECORD $_ at line $.\n"; next; }
   
   #convert the time
   # there is no WYC consistency here either :-(
@@ -112,19 +112,19 @@ while (<>) {
     $hour = $1;
     $min = $2;
   } 
-  else { warn 'BAD RECORD '.$_; next; }
+  else { warn "BAD RECORD $_ at line $.\n"; next; }
   
   #print the record
   my $highwater = sprintf "%04d", $line[$HW];
-  if ($opt_v) {
-    printVCAL($num, $month, $hour, $min, $line[$EVENT], $highwater);
-  } else {
+  if ($opt_d) {
     printDBA($num, $month, $hour, $min, $line[$EVENT], $highwater);
+  } else {
+    printVCAL($num, $month, $hour, $min, $line[$EVENT], $highwater);
   }
 }
 
 #print trailer
-printEOVCAL() if $opt_v;
+printEOVCAL() unless $opt_d;
 
 
 # SUBROUTINES -----------------------------------------
@@ -157,7 +157,7 @@ sub printDBA ($$$$$$){
   print  "WYC $event";
   printf ", HW=%s", $highwater unless $highwater eq '';
   print "\n";
-  print "$NOTE\n.\n" if defined $opt_n;
+  print "$note\n.\n" if defined $opt_n;
 }  
 
 # Print vCal entry
@@ -167,7 +167,6 @@ sub printVCAL ($$$$$$){
   my $T = 'T';
   # 'Z' means UTC rather than local time
   my $OOZ = defined $opt_z ? '00Z' : '00';
-  my $note = defined $opt_n ? $NOTE : ''; 
   my $start = $hour.$min;
   my $day = sprintf "%4d%02d%02d", $YEAR, $month, $num;
   my $end_hour = $hour + $DURATION;
@@ -211,7 +210,7 @@ Convert CSV output grabbed by Excel from WYC racing schedule
 to file suitable for input to vCal or convdb.
 Options:
   -h 		Print this help.
-  -n [note]	Add note to each entry in the calendar. If no note given, use default for REJ's DateBk5.
+  -n [note]	Add note to each entry in the calendar. 
   -v		Use vCal format rather than .dba.
   -z		Use UTC rather than local time
 EOH

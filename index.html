@@ -1,35 +1,46 @@
 <html>
 <head>
 <title>WYC racing</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"></head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<style type="text/css">
+<!--
+body {
+	background-color: #99CCFF;
+}
+.main {
+	background-color: #FFFFFF;
+}
+.style1 {color: #330066}
+-->
+</style>
+</head>
 
-<body bgcolor="#FFFFFF" text="#000000">
-<h1>Whitstable Yacht Club Racing Schedule</h1>
+<body text="#000000">
+<div class="main">
+<h1 class="style1">Whitstable Yacht Club Racing Schedule</h1>
 <p>WYC's <a href="http://www.wyc.org.uk">webpages</a> include a
-<a href="http://www.wyc.org.uk/flattened/racing_schedule.html">schedule</a> 
+<a href="http://www.wyc.org.uk/racing/schedule">schedule</a> 
   which is great when you have access to the web.</p>
-<p>But those like me who live by their Palm organiser would like to have the schedule 
-  in their pocket. So here are two Palm Datebook versions of 
-  the schedule that you can import via the Palm desktop or whatever you use.</p>
+<p>But those like me who live by the calendar on their phone, PDA or desktop would like to have the schedule 
+  in their pocket. So here is   a version of 
+  the schedule that you can import to the calendar that you use.</p>
 <ul>
-  <li>.dba format (e.g. for the Palm desktop on Windows).</li>
-  <li><a href="wyc09.vcs">2009 schedule</a>vCalendar format (e.g. for iCal or the Palm desktop on MacOS X).</li>
+  <li><a href="wyc10.vcs">2010 schedule</a> for iCal  on MacOS X, Google Calendar or Outlook on Windows (vCalendar format) .</li>
 </ul>
 
-<p>Richard Jones<br>
-5 March 2009</p>
-
+<p><a href="http://www.cs.kent.ac.uk/~rej">Richard Jones</a><br>
+17 January 2010</p>
+</div>
 <p><strong>Note</strong> Up to 2006, I used the
-.dba format. From 2007 I have been using the vCalendar format (as I've ditched Windows for
+  <em>.dba format</em> for that I could import the schedule into the old Palm desktop on Windows. From 2007 I have been using the vCalendar format (as I've ditched Windows for
 a Mac). So only a schedule in vCalendar format is provided here.
 If you want the .dba version, instructions on how to build your own are given
 below. If sufficient people ask me, then I'll build one
-and provide it here.
-
+and provide it here. 
 <hr>
 <h2>For techies only</h2>
 
-<p>Here's how I constructed the Palm version. The details depend on whether you use need .dba or vCal format. </p>
+<p>Here's how I constructed the calendar. The details depend on whether you are using a modern calendar (which can import vCal) or are using the old Palm Desktop for Windows (which uses .dba  format). </p>
 
 <p>You'll need (1) Microsoft Excel, 
   (2) Perl and, on Windows only, (3) a little tool called convdb. </p>
@@ -49,45 +60,42 @@ and provide it here.
   <li>Save the file as a csv file, say <code>wyc07.csv</code>.</li>
 </ol>
 
-<p>The rest of the procedure depends on whether you want the schedule in .dba format (Windows) or vCalendar format (MacOS X). vCalendar is much easier.</p>
+<p>The rest of the procedure depends on whether you want the schedule in vCalendar format (MacOS X) or you are using the Palm desktop on Windows (.dba format) or  vCalendar is much easier.</p>
 
-<h3>vCalendar (MacOS X)</h3>
+<h3>vCalendar (e.g. iCal on MacOS X, Google or Outlook on Windows)</h3>
 <ol start="4">
   <li>Make sure the line breaks are correct. I have found that Excel saves csv files
   in just one long line (the curse of different newline conventions). My script likes one event per line.
   <li>Run this little Perl <a href="wyc.pl">script</a> to convert the schedule to vCalendar format. Note the extension, <code>.vcs</code>.
     You'll need to have <a href="http://www.cpan.org">Perl</a> <a href="wyc.pl"></a> installed obviously.
     <ul>
-      <li><code>wyc.pl -v &lt;wyc07.csv &gt;wyc07.vcs</code></li>
+      <li><code>wyc.pl  &lt;wyc07.csv &gt;wyc07.vcs</code></li>
     </ul>
     <br>
     You can also add a 
-    <em>note</em> to each entry. Notes are used in the (excellent) Palm <a href="http://www.pimlicosoftware.com/">DateBk</a> calendar to format entries (e.g. with text and background colour, customised icon). There are two ways to do this:
-    <ul>
-      <li>To use my built-in format:  <code>wyc.pl -v -n &lt;wyc07.csv &gt;wyc07.vcs</code></li>
-      <li>To use your own format: <code>wyc.pl -v -n <em>string</em> &lt;wyc07.csv &gt;wyc07.vcs</code><br>
+    <em>note</em> to each entry. Notes are used in the (excellent) Palm <a href="http://www.pimlicosoftware.com/">DateBk</a> calendar to format entries (e.g. with text and background colour, customised icon).<ul>
+      <li>To use your own format: <code>wyc.pl -n <em>string</em> &lt;wyc07.csv &gt;wyc07.vcs</code><br>
     where <em>string</em> is the string your format needs (experiment with DateBk to see what it adds to the note field; you'll probably need to examine the note in the Palm's built-in calendar).<br>
       </li>
     </ul>
   </li>
-  <li>Now import the vCalendar file into Palm Desktop or whatever you use.</li>
+  <li>Now import the vCalendar file into your calendar.</li>
 </ol>
 
-<h3>.dba (Windows)  </h3>
+<h3>.dba (for Palm dateBook on Windows)  </h3>
+<p>This is how you had to import data on the old Palm Desktop for Windows. The new Palm Pre can import from Google Calendar which is much simpler.</p>
 <ol start="4">
   <li>Run this little Perl <a href="wyc.pl">script</a>.
     You'll need to have <a href="http://www.cpan.org">Perl</a> <a href="wyc.pl"></a> installed obviously.
     <ul>
-      <li>For .dba (Windows): <code><br>
-        wyc.pl &lt; wyc07.csv &gt; wyc07.txt</code><br>
+      <li>For .dba (for Windows)<code><br>
+        wyc.pl -d &lt; wyc07.csv &gt; wyc07.txt</code><br>
       </li>
     </ul>
     <br>
     You can also add a 
-    <em>note</em> to each entry. Notes are used in the (excellent) Palm <a href="http://www.pimlicosoftware.com/">DateBk</a> calendar to format entries (e.g. with text and background colour, customised icon). There are two ways to do this:
-    <ul>
-      <li>To use my built-in format:  <code>wyc.pl -n &lt;wyc07.csv &gt;wyc07.txt</code></li>
-      <li>To use your own format: <code>wyc.pl -n <em>string</em> &lt;wyc07.csv &gt;wyc07.txt</code><br>
+    <em>note</em> to each entry. Notes are used in the (excellent) Palm <a href="http://www.pimlicosoftware.com/">DateBk</a> calendar to format entries (e.g. with text and background colour, customised icon). There are two ways to do this:<ul>
+      <li>To use your own format: <code>wyc.pl -d -n <em>string</em> &lt;wyc07.csv &gt;wyc07.txt</code><br>
     where <em>string</em> is the string your format needs (experiment with DateBk to see what it adds to the note field; you'll probably need to examine the note in the Palm's built-in calendar).<br>
     <br>
       </li>
@@ -103,7 +111,7 @@ and provide it here.
       <li>Rename <code>output.dba</code> to something sensible, e.g. <code>wyc07.dba</code></li>
     </ul>
   </li>
-  <li>Now import the dba file into Palm Desktop or whatever you use.</li>
+  <li>Now import the dba file into the old Palm Desktop.</li>
 </ol>
 
 </body>
