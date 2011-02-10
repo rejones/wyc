@@ -2,7 +2,7 @@
 
 # Convert WYC racing schedule into format that can be loaded into a calendar.
 # Two formats are provided, one suitable for converting to .dba with convdb on Windows,
-# and a vCal format for importing directly into calendars that support this
+# and a vCalendar format for importing directly into calendars that support this
 # format.
 
 use strict;
@@ -32,6 +32,12 @@ my $EVENT = 3;
 my $DURATION = 3;
 my $ADVANCE = 2; # 2 hours warning
 
+my $TBA = 'TBA'; # start not announced yet
+my $TBAhour = '10'; # so set the period to be 10.00 - 16.00
+my $TBAmin = '00'; 
+my $TBAduration = 6;
+my $TBAstring = ' (to be confirmed)'; # string to add to TBA events
+
 # This note provide a colour and icon for REJ's DateBk5 calendar
 #my $NOTE = '##@@PC@@@A@@@@@@@@p=0D=0A';
 my $note = '';
@@ -39,9 +45,10 @@ my $note = '';
 sub help($);
 sub printDBAhdr();
 sub printVCALhdr();
-sub printDBA($$$$$$);
-sub printVCAL($$$$$$);
+sub printDBA($$$$$$$);
+sub printVCAL($$$$$$$);
 sub printEOVCAL();
+sub sanity($$$$);
 
 
 
@@ -84,6 +91,7 @@ if ($opt_d) {
 # Process the source file
 while (<>) {
   chomp;
+  $_ =~ s/"//g;         # excel sometimes puts ".." around entries
   my @line = split /,/;
   my $date = $line[$DAY];
 
@@ -108,18 +116,26 @@ while (<>) {
   # there is no WYC consistency here either :-(
   my $hour;
   my $min;
+  my $event = $line[$EVENT];
+  my $duration = $DURATION;
   if ($line[$START] =~ /^(\d\d):?(\d\d)/) {
     $hour = $1;
     $min = $2;
   } 
+  elsif ($line[$START] eq $TBA || $line[$START] eq '') {
+    $hour = $TBAhour;
+    $min = $TBAmin;
+    $event = $event . $TBAstring;
+    $duration = $TBAduration;
+  }
   else { warn "BAD RECORD $_ at line $.\n"; next; }
   
   #print the record
   my $highwater = sprintf "%04d", $line[$HW];
   if ($opt_d) {
-    printDBA($num, $month, $hour, $min, $line[$EVENT], $highwater);
+    printDBA($num, $month, $hour, $min, $duration, $line[$EVENT], $highwater);
   } else {
-    printVCAL($num, $month, $hour, $min, $line[$EVENT], $highwater);
+    printVCAL($num, $month, $hour, $min, $duration, $line[$EVENT], $highwater);
   }
 }
 
@@ -139,7 +155,7 @@ sub printDBAhdr () {
   print "\n";
 }
 
-# vCal header
+# vCalendar header
 sub printVCALhdr() {
   print <<"EOVH"
 BEGIN:VCALENDAR
@@ -150,29 +166,29 @@ EOVH
 }
 
 # Print .dba entry
-sub printDBA ($$$$$$){
-  my($num, $month, $hour, $min, $event, $highwater) = @_;
+sub printDBA ($$$$$$$){
+  my($num, $month, $hour, $min, $duration, $event, $highwater) = @_;
   print "$num/$month/$YEAR\t";
-  print "$hour:$min\t$DURATION\t";
+  print "$hour:$min\t$duration\t";
   print  "WYC $event";
   printf ", HW=%s", $highwater unless $highwater eq '';
   print "\n";
   print "$note\n.\n" if defined $opt_n;
 }  
 
-# Print vCal entry
-sub printVCAL ($$$$$$){
-  my($num, $month, $hour, $min, $event, $highwater) = @_;
+# Print vCalendar entry
+sub printVCAL ($$$$$$$){
+  my($num, $month, $hour, $min, $duration, $event, $highwater) = @_;
   my $hw = $highwater eq '' ? '' : ", HW=$highwater";
   my $T = 'T';
-  # 'Z' means UTC rather than local time
-  my $OOZ = defined $opt_z ? '00Z' : '00';
+  # specify times as local if we span DST
+  my $OOZ = defined $opt_z ? '00Z' : '00';      # 'Z' means UTC rather than local time
   my $start = $hour.$min;
   my $day = sprintf "%4d%02d%02d", $YEAR, $month, $num;
-  my $end_hour = $hour + $DURATION;
+  my $end_hour = $hour + $duration;
   my $end;
   if ($end_hour >= 24) {        # assume $hour+$DURATION < 2400
-    warn "Event spans midnight! $event\n";
+    warn "Event spans midnight! $event, $hour, $duration\n";
     $end = "2359";
   } else {
     $end = sprintf "%02d%s", $end_hour, $min;
@@ -185,6 +201,8 @@ sub printVCAL ($$$$$$){
   } else { 
     $alarm = sprintf "%02d%s", $alarm_hour, $min;
   }
+  # sanity check
+  sanity($day, $start, $end, $alarm);
   print <<"EOV"
 BEGIN:VEVENT
 SUMMARY:WYC $event$hw
@@ -196,7 +214,7 @@ END:VEVENT
 EOV
 }
 
-# vCal trailer
+# vCalendar trailer
 sub printEOVCAL() {
   print "END:VCALENDAR\n";
 }
@@ -207,12 +225,20 @@ sub help($) {
   print <<"EOH"
 $usage
 Convert CSV output grabbed by Excel from WYC racing schedule
-to file suitable for input to vCal or convdb.
+to a file suitable for input to vCalendar or convdb.
 Options:
   -h 		Print this help.
   -n [note]	Add note to each entry in the calendar. 
-  -v		Use vCal format rather than .dba.
-  -z		Use UTC rather than local time
+  -d		Use .dba format rather than vCalendar.
+  -z		Use UTC rather than local time.
 EOH
 } 
   
+# Sanity check on lengths
+sub sanity($$$$) {
+  my ($day, $start, $end, $alarm) = @_;
+  die "Bad length for day $day\n"     unless length($day) == 8;   # yyyymmdd 
+  die "Bad length for start $start\n" unless length($start) == 4; # hhmm
+  die "Bad length for end $end\n"     unless length($end) == 4;   # hhmm
+  die "Bad length for alarm $alarm\n" unless length($alarm) == 4; # hhmm
+}
