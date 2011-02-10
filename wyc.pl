@@ -36,7 +36,7 @@ my $TBA = 'TBA'; # start not announced yet
 my $TBAhour = '10'; # so set the period to be 10.00 - 16.00
 my $TBAmin = '00'; 
 my $TBAduration = 6;
-my $TBAstring = ' (to be confirmed)'; # string to add to TBA events
+my $TBAstring = ' (times TBC)'; # string to add to TBA events
 
 # This note provide a colour and icon for REJ's DateBk5 calendar
 #my $NOTE = '##@@PC@@@A@@@@@@@@p=0D=0A';
@@ -133,9 +133,9 @@ while (<>) {
   #print the record
   my $highwater = sprintf "%04d", $line[$HW];
   if ($opt_d) {
-    printDBA($num, $month, $hour, $min, $duration, $line[$EVENT], $highwater);
+    printDBA($num, $month, $hour, $min, $duration, $event, $highwater);
   } else {
-    printVCAL($num, $month, $hour, $min, $duration, $line[$EVENT], $highwater);
+    printVCAL($num, $month, $hour, $min, $duration, $event, $highwater);
   }
 }
 
