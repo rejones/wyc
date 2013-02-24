@@ -67,19 +67,22 @@ $note = $opt_n if defined $opt_n;
 my $YEAR = (@ARGV == 1) ?
              shift @ARGV :
              1900 + (localtime)[5];
-die "Bad year: $YEAR" if ($YEAR < 2006 || $YEAR > 9999);
-my $month = 1;
+die "Bad year: \"$YEAR\"" if ($YEAR < 2006 || $YEAR > 9999);
 
+# From 2013, WYC no longer has the month on a line on its own;
+# instead, each entry is ddd [n]n month, e.g. Mon 1 April
+#my $month = 1;
+#
 #skip source file headers
-while (<>) {
-  my @line = split /,/;
-  my $date = $line[$DAY];
-  my $dateUC = uc $date;
-  if (exists $months{$dateUC}) {
-    $month = $months{$dateUC};
-    last;
-  }
-}
+#while (<>) {
+#  my @line = split /,/;
+#  my $date = $line[$DAY];
+#  my $dateUC = uc $date;
+#  if (exists $months{$dateUC}) {
+#    $month = $months{$dateUC};
+#    last;
+#  }
+#}
 
 # Print header
 if ($opt_d) {
@@ -95,22 +98,24 @@ while (<>) {
   my @line = split /,/;
   my $date = $line[$DAY];
 
-  # update the month
-  my $dateUC = uc $date;
-  if (exists $months{$dateUC}) {
-    $month = $months{$dateUC};
-    next;
-  }
+#  # update the month
+#  my $dateUC = uc $date;
+#  if (exists $months{$dateUC}) {
+#    $month = $months{$dateUC};
+#    next;
+#  }
 
   # convert the day
   # unfortunately the WYC data is unreliably formatted here
   my $day;
   my $num;
-  if ($date =~ /^([A-Za-z]+)\s*([0-9]+)/) {
+  my $month;
+  if ($date =~ /^([A-Za-z]+)\s*([0-9]+)\s*([A-Za-z]+)/) {
   	$day = $1;
   	$num = $2;
+        $month = $months{uc $3};
   }
-  else {warn "BAD RECORD $_ at line $.\n"; next; }
+  else {warn "header or BAD RECORD \"$_\" at line $.\n"; next; }
   
   #convert the time
   # there is no WYC consistency here either :-(
@@ -118,6 +123,7 @@ while (<>) {
   my $min;
   my $event = $line[$EVENT];
   my $duration = $DURATION;
+  #TODO time before 0900 are sometimes recorded with only 3 digits
   if ($line[$START] =~ /^(\d\d):?(\d\d)/) {
     $hour = $1;
     $min = $2;
@@ -128,7 +134,7 @@ while (<>) {
     $event = $event . $TBAstring;
     $duration = $TBAduration;
   }
-  else { warn "BAD RECORD $_ at line $.\n"; next; }
+  else { warn "BAD RECORD \"$_\" at line $.\n"; next; }
   
   #print the record
   my $highwater = sprintf "%04d", $line[$HW];
