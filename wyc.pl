@@ -115,7 +115,7 @@ while (<>) {
   	$num = $2;
         $month = $months{uc $3};
   }
-  else {warn "header or BAD RECORD \"$_\" at line $.\n"; next; }
+  else {warn "header or BAD RECORD \"$_\" at line $.\nCannot parse date.\n"; next; }
   
   #convert the time
   # there is no WYC consistency here either :-(
@@ -134,7 +134,7 @@ while (<>) {
     $event = $event . $TBAstring;
     $duration = $TBAduration;
   }
-  else { warn "BAD RECORD \"$_\" at line $.\n"; next; }
+  else { warn "BAD RECORD \"$_\" at line $.\nCannot parse time.\n"; next; }
   
   #print the record
   my $highwater = sprintf "%04d", $line[$HW];
