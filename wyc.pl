@@ -12,18 +12,19 @@ use vars qw($opt_h $opt_n $opt_d $opt_z);
 my $usage = "Usage: wyc.pl [-h] [-v] [-z] [-n [note]] [year] < in.csv > out.txt";
 
 my %months = (
-  "JANUARY" => 1,
-  "FEBRUARY" => 2,
-  "MARCH" => 3,
-  "APRIL" => 4,
+  "JAN" => 1,
+  "FEB" => 2,
+  "MAR" => 3,
+  "APR" => 4,
   "MAY" => 5,
-  "JUNE" => 6,
-  "JULY" => 7,
-  "AUGUST" => 8,
-  "SEPTEMBER" => 9,
-  "OCTOBER" => 10,
-  "NOVEMBER" => 11,
-  "DECEMBER" => 12 );
+  "JUN" => 6,
+  "JUL" => 7,
+  "AUG" => 8,
+  "SEP" => 9,
+  "OCT" => 10,
+  "NOV" => 11,
+  "DEC" => 12 );
+my $MONTHS_PREFIX_LEN = 3;
 
 my $DAY = 0;
 my $HW = 1;
@@ -32,7 +33,7 @@ my $EVENT = 3;
 my $DURATION = 3;
 my $ADVANCE = 2; # 2 hours warning
 
-my $TBA = 'TBA'; # start not announced yet
+my $TBA = 'TBC'; # not announced yet
 my $TBAhour = '10'; # so set the period to be 10.00 - 16.00
 my $TBAmin = '00'; 
 my $TBAduration = 6;
@@ -113,7 +114,7 @@ while (<>) {
   if ($date =~ /^([A-Za-z]+)\s*([0-9]+)\s*([A-Za-z]+)/) {
   	$day = $1;
   	$num = $2;
-        $month = $months{uc $3};
+        $month = $months{substr(uc $3,0, $MONTHS_PREFIX_LEN)};
   }
   else {warn "header or BAD RECORD \"$_\" at line $.\nCannot parse date.\n"; next; }
   
