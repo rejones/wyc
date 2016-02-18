@@ -138,7 +138,7 @@ while (<>) {
   else { warn "BAD RECORD \"$_\" at line $.\nCannot parse time.\n"; next; }
   
   #print the record
-  my $highwater = sprintf "%04d", $line[$HW];
+  my $highwater = $line[$HW];
   if ($opt_d) {
     printDBA($num, $month, $hour, $min, $duration, $event, $highwater);
   } else {
