@@ -116,7 +116,7 @@ while (<>) {
   	$num = $2;
         $month = $months{substr(uc $3,0, $MONTHS_PREFIX_LEN)};
   }
-  else {warn "header or BAD RECORD \"$_\" at line $.\nCannot parse date.\n"; next; }
+  else {warn "header or BAD RECORD \"$_\" at line $.\ndate=\"$date\"\nCannot parse date.\n"; next; }
   
   #convert the time
   # there is no WYC consistency here either :-(
