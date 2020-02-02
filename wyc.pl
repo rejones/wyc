@@ -26,10 +26,12 @@ my %months = (
   "DEC" => 12 );
 my $MONTHS_PREFIX_LEN = 3;
 
-my $DAY = 0;
-my $HW = 1;
-my $START = 2;
-my $EVENT = 3; 
+# 2020 format
+my $DAY = 3;
+my $HW = 5;
+my $START = 6;
+my $EVENT = 8; 
+
 my $DURATION = 3;
 my $ADVANCE = 2; # 2 hours warning
 
