@@ -7,6 +7,8 @@
 
 use strict;
 use Getopt::Long;
+use Data::GUID;
+use DateTime;
 use vars qw($opt_h $opt_n $opt_d $opt_z);
 
 my $usage = "Usage: wyc.pl [-h] [-v] [-z] [-n [note]] [year] < in.csv > out.txt";
@@ -32,6 +34,7 @@ my $HW = 5;
 my $START = 6;
 my $EVENT = 8; 
 
+my $VERSION = "2.0";
 my $DURATION = 3;
 my $ADVANCE = 2; # 2 hours warning
 
@@ -72,6 +75,11 @@ my $YEAR = (@ARGV == 1) ?
              1900 + (localtime)[5];
 die "Bad year: \"$YEAR\"" if ($YEAR < 2006 || $YEAR > 9999);
 
+my $T = 'T';
+#my $OOZ = defined $opt_z ? '00Z' : '00';      # 'Z' means UTC rather than local time
+my $Z = defined $opt_z ? 'Z' : '';      # 'Z' means UTC rather than local time
+my $DTSTAMP;
+
 # From 2013, WYC no longer has the month on a line on its own;
 # instead, each entry is ddd [n]n month, e.g. Mon 1 April
 #my $month = 1;
@@ -91,6 +99,8 @@ die "Bad year: \"$YEAR\"" if ($YEAR < 2006 || $YEAR > 9999);
 if ($opt_d) {
   printDBAhdr();
 } else {
+  my $dt = DateTime->now;
+  $DTSTAMP = $dt->ymd('').$T.$dt->hms('').$Z;
   printVCALhdr();
 }
 
@@ -170,7 +180,7 @@ sub printVCALhdr() {
 BEGIN:VCALENDAR
 PRODID:Richard Jones wyc.pl generated
 TZ:+00
-VERSION:1.0
+VERSION:$VERSION
 EOVH
 }
 
@@ -189,36 +199,37 @@ sub printDBA ($$$$$$$){
 sub printVCAL ($$$$$$$){
   my($num, $month, $hour, $min, $duration, $event, $highwater) = @_;
   my $hw = $highwater eq '' ? '' : ", HW=$highwater";
-  my $T = 'T';
   # specify times as local if we span DST
-  my $OOZ = defined $opt_z ? '00Z' : '00';      # 'Z' means UTC rather than local time
-  my $start = $hour.$min;
+  my $start = $hour.$min.'00';
   my $day = sprintf "%4d%02d%02d", $YEAR, $month, $num;
   my $end_hour = $hour + $duration;
   my $end;
   if ($end_hour >= 24) {        # assume $hour+$DURATION < 2400
     warn "Event spans midnight! $event, $hour, $duration\n";
-    $end = "2359";
+    $end = "235900";
   } else {
-    $end = sprintf "%02d%s", $end_hour, $min;
+    $end = sprintf "%02d%s00", $end_hour, $min;
   }
   my $alarm_hour = $hour - $ADVANCE;
   my $alarm;
   if ($alarm_hour < 0) {       # assume nothing starts before ADVANCE:00!
     warn "Alarm set for previous day: $event\n";
-    $alarm = "0000";
+    $alarm = "000000";
   } else { 
-    $alarm = sprintf "%02d%s", $alarm_hour, $min;
+    $alarm = sprintf "%02d%s00", $alarm_hour, $min;
   }
   # sanity check
   sanity($day, $start, $end, $alarm);
+  my $guid = Data::GUID->new;
   print <<"EOV"
 BEGIN:VEVENT
+DTSTAMP:$DTSTAMP
+UID:$guid
 SUMMARY:WYC $event$hw
 DESCRIPTION;QUOTED-PRINTABLE:$note
-DTSTART:$day$T$start$OOZ
-DTEND:$day$T$end$OOZ
-DALARM:$day$T$alarm$OOZ
+DTSTART:$day$T$start$Z
+DTEND:$day$T$end$Z
+DALARM:$day$T$alarm$Z
 END:VEVENT
 EOV
 }
@@ -247,7 +258,7 @@ EOH
 sub sanity($$$$) {
   my ($day, $start, $end, $alarm) = @_;
   die "Bad length for day $day\n"     unless length($day) == 8;   # yyyymmdd 
-  die "Bad length for start $start\n" unless length($start) == 4; # hhmm
-  die "Bad length for end $end\n"     unless length($end) == 4;   # hhmm
-  die "Bad length for alarm $alarm\n" unless length($alarm) == 4; # hhmm
+  die "Bad length for start $start\n" unless length($start) == 6; # hhmm00
+  die "Bad length for end $end\n"     unless length($end) == 6;   # hhmm00
+  die "Bad length for alarm $alarm\n" unless length($alarm) == 6; # hhmm00
 }
