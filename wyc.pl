@@ -178,9 +178,8 @@ sub printDBAhdr () {
 sub printVCALhdr() {
   print <<"EOVH"
 BEGIN:VCALENDAR
-PRODID:Richard Jones wyc.pl generated
-TZ:+00
 VERSION:$VERSION
+PRODID:Richard Jones wyc.pl generated
 EOVH
 }
 
@@ -220,13 +219,12 @@ sub printVCAL ($$$$$$$){
   }
   # sanity check
   sanity($day, $start, $end, $alarm);
-  my $guid = Data::GUID->new;
+  my $guid = Data::GUID->new; #todo
   print <<"EOV"
 BEGIN:VEVENT
-DTSTAMP:$DTSTAMP
-UID:$guid
 SUMMARY:WYC $event$hw
 DESCRIPTION;QUOTED-PRINTABLE:$note
+DTSTAMP:$DTSTAMP$Z
 DTSTART:$day$T$start$Z
 DTEND:$day$T$end$Z
 DALARM:$day$T$alarm$Z
