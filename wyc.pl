@@ -34,7 +34,8 @@ my $HW = 5;
 my $START = 6;
 my $EVENT = 8; 
 
-my $VERSION = "2.0";
+my $VERSION = '2.0';
+my $TZ = 'TZID=Europe/London';
 my $DURATION = 3;
 my $ADVANCE = 2; # 2 hours warning
 
@@ -76,7 +77,6 @@ my $YEAR = (@ARGV == 1) ?
 die "Bad year: \"$YEAR\"" if ($YEAR < 2006 || $YEAR > 9999);
 
 my $T = 'T';
-#my $OOZ = defined $opt_z ? '00Z' : '00';      # 'Z' means UTC rather than local time
 my $Z = defined $opt_z ? 'Z' : '';      # 'Z' means UTC rather than local time
 my $DTSTAMP;
 
@@ -100,7 +100,7 @@ if ($opt_d) {
   printDBAhdr();
 } else {
   my $dt = DateTime->now;
-  $DTSTAMP = $dt->ymd('').$T.$dt->hms('').$Z;
+  $DTSTAMP = $dt->ymd('').$T.$dt->hms('');
   printVCALhdr();
 }
 
@@ -224,12 +224,13 @@ sub printVCAL ($$$$$$$){
 BEGIN:VEVENT
 SUMMARY:WYC $event$hw
 DESCRIPTION;QUOTED-PRINTABLE:$note
-DTSTAMP:$DTSTAMP$Z
-DTSTART:$day$T$start$Z
-DTEND:$day$T$end$Z
-DALARM:$day$T$alarm$Z
+UID:$guid
+DTSTAMP;$TZ:$DTSTAMP
+DTSTART;$TZ:$day$T$start
+DTEND;$TZ:$day$T$end
 END:VEVENT
 EOV
+#DALARM:$day$T$alarm$Z
 }
 
 # vCalendar trailer
