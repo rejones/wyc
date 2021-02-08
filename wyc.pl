@@ -138,7 +138,10 @@ while (<>) {
   # there is no WYC consistency here either :-(
   my $hour;
   my $min;
-  my $event = "$line[$EVENT] $line[$RACE_NO] $line[$CB]";
+  my $event = $line[$EVENT];
+  $event = "$event $line[$RACE_NO]" unless $line[$RACE_NO] eq '';
+  $event = "$event $line[$CB]" unless $line[$CB] eq '';
+  $event =~ s/\s+,/,/g;
   my $duration;
   #TODO time before 0900 are sometimes recorded with only 3 digits
   if ($line[$START] =~ /^(\d\d):?(\d\d)/) {
@@ -155,7 +158,8 @@ while (<>) {
   else { warn "BAD RECORD \"$_\" at line $.\nCannot parse time.\n"; next; }
   
   #print the record
-  my $highwater = $line[$HW];
+  my $highwater = sprintf("%04d", $line[$HW]);
+
   if ($opt_d) {
     printDBA($num, $month, $hour, $min, $duration, $event, $highwater);
   } else {
