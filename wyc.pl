@@ -11,7 +11,7 @@ use Data::GUID;
 use DateTime;
 use vars qw($opt_h $opt_n $opt_d $opt_z);
 
-my $usage = "Usage: wyc.pl [-h] [-v] [-z] [-n [note]] [year] < in.csv > out.txt";
+my $usage = "Usage: wyc.pl [-h] [-v] [-z] [-n [note]] [year] < in.csv > out.vcs";
 
 my %months = (
   "JAN" => 1,
@@ -28,15 +28,18 @@ my %months = (
   "DEC" => 12 );
 my $MONTHS_PREFIX_LEN = 3;
 
-# 2020 format
-my $DAY = 3;
-my $HW = 5;
-my $START = 6;
-my $EVENT = 8; 
+# 2021 format
+my $DAY = 7; # format e.g Sat 06 Mar
+my $HW = 9;
+my $START = 10;
+my $EVENT = 11; 
+my $RACES = 12; # number of races
+my $RACE_NO = 13; # e.g. 1 or 5&6
+my $CB = 14; # (CB) or blank
 
 my $VERSION = '2.0';
 my $TZ = 'TZID=Europe/London';
-my $DURATION = 3;
+my $DURATION = 2; # hours for a single race
 my $ADVANCE = 2; # 2 hours warning
 
 my $TBA = 'TBC'; # not announced yet
@@ -106,6 +109,7 @@ if ($opt_d) {
 
 # Process the source file
 while (<>) {
+  next if $. < 2; # discard header
   chomp;
   $_ =~ s/"//g;         # excel sometimes puts ".." around entries
   my @line = split /,/;
@@ -134,12 +138,13 @@ while (<>) {
   # there is no WYC consistency here either :-(
   my $hour;
   my $min;
-  my $event = $line[$EVENT];
-  my $duration = $DURATION;
+  my $event = "$line[$EVENT] $line[$RACE_NO] $line[$CB]";
+  my $duration;
   #TODO time before 0900 are sometimes recorded with only 3 digits
   if ($line[$START] =~ /^(\d\d):?(\d\d)/) {
     $hour = $1;
     $min = $2;
+    $duration = $DURATION + ($line[$RACES] - 1); # Allow extra hour for each additional race
   } 
   elsif ($line[$START] eq $TBA || $line[$START] eq '') {
     $hour = $TBAhour;

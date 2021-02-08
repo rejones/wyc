@@ -7,7 +7,7 @@ must be specified with DTSTART, DTEND, etc when value is neither UTC nor
 "floating"
 
 ** easiest to use local time! I.e. without Z
-  DTSTART;TZID=Europe/Londion:2020...
+  DTSTART;TZID=Europe/London:2020...
 
 ** DURATION might be easier than DTEND
 A duration of 15 days, 5 hours, and 20 seconds would be:
