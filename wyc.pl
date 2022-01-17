@@ -7,7 +7,7 @@
 
 use strict;
 use Getopt::Long;
-use Data::GUID;
+#use Data::GUID; #segmentation fault on MacOS Monterey, but iCal adds UIDs anyway
 use DateTime;
 use vars qw($opt_h $opt_n $opt_d $opt_z);
 
@@ -28,14 +28,14 @@ my %months = (
   "DEC" => 12 );
 my $MONTHS_PREFIX_LEN = 3;
 
-# 2021 format
-my $DAY = 7; # format e.g Sat 06 Mar
-my $HW = 9;
-my $START = 10;
-my $EVENT = 11; 
-my $RACES = 12; # number of races
-my $RACE_NO = 13; # e.g. 1 or 5&6
-my $CB = 14; # (CB) or blank
+# 2022 format
+my $DAY = 3; # format e.g Sat 06 Mar
+my $HW = 4;
+my $START = 5;
+my $EVENT = 6; 
+my $RACES = 7; # number of races
+#my $RACE_NO = 13; # e.g. 1 or 5&6
+#my $CB = 14; # (CB) or blank
 
 my $VERSION = '2.0';
 my $TZ = 'TZID=Europe/London';
@@ -127,29 +127,43 @@ while (<>) {
   my $day;
   my $num;
   my $month;
-  if ($date =~ /^([A-Za-z]+)\s*([0-9]+)\s*([A-Za-z]+)/) {
+  if ($date =~ /^([A-Za-z]+)\s*([0-9]+)[snrt][tdh]\s*([A-Za-z]+)/) { #eg Sun 6th Mar
   	$day = $1;
   	$num = $2;
         $month = $months{substr(uc $3,0, $MONTHS_PREFIX_LEN)};
   }
   else {warn "header or BAD RECORD \"$_\" at line $.\ndate=\"$date\"\nCannot parse date.\n"; next; }
   
+  # get event name 
+  my $event = $line[$EVENT];
+  #$event = "$event $line[$RACE_NO]" unless $line[$RACE_NO] eq '';
+  #$event = "$event $line[$CB]" unless $line[$CB] eq '';
+  $event =~ s/\s+,/,/g;
+  # sanity check number of races
+  if ($line[$RACES] > 1) {
+    unless ($event =~ /\d\&\d/) {
+      warn "BAD RECORD \"$_\" at line $.\nWrong number of races\n"; 
+      next;
+    }
+  }
+
   #convert the time
   # there is no WYC consistency here either :-(
   my $hour;
   my $min;
-  my $event = $line[$EVENT];
-  $event = "$event $line[$RACE_NO]" unless $line[$RACE_NO] eq '';
-  $event = "$event $line[$CB]" unless $line[$CB] eq '';
-  $event =~ s/\s+,/,/g;
   my $duration;
-  #TODO time before 0900 are sometimes recorded with only 3 digits
   if ($line[$START] =~ /^(\d\d):?(\d\d)/) {
     $hour = $1;
     $min = $2;
     $duration = $DURATION + ($line[$RACES] - 1); # Allow extra hour for each additional race
   } 
-  elsif ($line[$START] eq $TBA || $line[$START] eq '') {
+  # times before 1000 are sometimes recorded with only 3 digits
+  elsif ($line[$START] =~ /^(\d):?(\d\d)/) {
+    $hour = 0 . $1;
+    $min = $2;
+    $duration = $DURATION + ($line[$RACES] - 1); # Allow extra hour for each additional race
+  } 
+  elsif ($line[$START] eq $TBA || $line[$START] eq '' || $line[$START] eq '-') {
     $hour = $TBAhour;
     $min = $TBAmin;
     $event = $event . $TBAstring;
@@ -228,17 +242,17 @@ sub printVCAL ($$$$$$$){
   }
   # sanity check
   sanity($day, $start, $end, $alarm);
-  my $guid = Data::GUID->new; #todo
+  #my $guid = Data::GUID->new; #todo
   print <<"EOV"
 BEGIN:VEVENT
 SUMMARY:WYC $event$hw
 DESCRIPTION;QUOTED-PRINTABLE:$note
-UID:$guid
 DTSTAMP;$TZ:$DTSTAMP
 DTSTART;$TZ:$day$T$start
 DTEND;$TZ:$day$T$end
 END:VEVENT
 EOV
+#UID:$guid
 #DALARM:$day$T$alarm$Z
 }
 
