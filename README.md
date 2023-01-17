@@ -15,7 +15,7 @@ Other supported but obsolete formats are:
 -  vCalendar (`.vcs`)
 -  DateBook for Palm mobile devices (`.dba`)
 
-The calendar argument is the type of events to generate,
+The `calendar` argument is the type of events to generate,
 i.e. for WYC, "Main" or "Cadet".
 
 Options:
