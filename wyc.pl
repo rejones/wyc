@@ -5,24 +5,30 @@
 # importing into e.g. Google Calender or Apple Calendar. Apple Calendar will
 # also accept vCalendar format (.vcs). Finally, the tool also supports the
 # obsolete DataBook format used by Palm Pilots (which may need to be converted 
-# to .dba with convdb on Windows.
+# to .dba with convdb on Windows).
 
 use strict;
 use Getopt::Long;
 #use String::Approx qw(amatch)
 use DateTime;
 use UUID 'uuid';
+use Date::Manip qw(ParseDate Date_Init Date_DaysInMonth);
+&Date_Init("DateFormat=non-US");
+use Data::Dumper;
 use vars qw($opt_h $opt_v $opt_d $opt_z $opt_n);
 
 sub help($);
+sub bad($$);
+sub AA_int($);
 sub printDBAhdr();
 sub printCALhdr();
 sub printDBA($$$$$$$);
-sub printVCAL($$$$$$$);
+sub printVCAL($$$$$$);
+sub printICAL($$$$$$);
 sub printEOCAL();
 sub sanity($$$$);
 
-my $USAGE = "Usage: wyc.pl [-h] [-v] [-d] [-z] calendar [year] < in.csv > out.vcs";
+my $USAGE = 'Usage: wyc.pl [-h] [-v] [--datebook] [-z] --col field=column_number... [calendars] [year] < in.csv > out.vcs';
 
 # Print help message
 sub help($) {
@@ -31,117 +37,167 @@ sub help($) {
 $usage
 Convert CSV output grabbed by Excel from the WYC racing schedule
 to a file suitable for a calendar app. The default output format is
-iCalendar (.ics) as per RFC 5545. Other supported but obsolete 
+iCalendar (.ics) as per RFC 5545. Other supported but old/obsolete 
 formats are:
   vCalendar (.vcs)
   DateBook for Palm mobile devices (.dba)
 
-The calendar argument is the type of events to generate,
-i.e. "Main" or "Cadet".
+Note: Do not put commas in any cell in the spreadsheet as this will
+confuse the CSV file.
 
-Options:
+The required calendar arguments are the column numbers of the key fields
+and, optionally, the types of event to include, and/or the year 
+if the calendar is being generated for a year other than the current one.
+
+Columns are specified by '--col field=column_number' where
+field           Day, Month, Date, HW, Start, Event, Calendar.
+column_number   Specified either alphabetically or numerically.
+Field names are case-insensitive.
+
+Mandatory fields that MUST be specified by --cols are:
+(1) The date column(s) of the event must be specified by
+    EITHER --col Day=num and --col Month=num OR --col Date=num. 
+    If Day is specified, an entry in the Day column may be  
+    a cardinal (e.g. 6) or an ordinal (e.g. 6th) number.
+    If Month is specified, the entries should be either a cardinal number
+    (e.g. 6) or a month name or prefix (e.g. June or Jun).
+    If a Date is specified, almost any format is accepted
+(2) The Start column. Entries in the start column should usually be times 
+    using a 24-hour clock. Acceptable entries include 1400, 14:00 and 14.00.
+    However, TBA, TBC, NA and N/A are also accepted.
+    Lines without valid Start entries (such as headers, blank lines) 
+    are ignored.
+(3) The Event column. 
+
+Optional fields are:
+(1) The high-water (HW) columns. An entry in this column (e.g. 1500), 
+    if any, is appended to the entry in the Event column (e.g. Race 1)
+    to give e.g. (Race 1, HW=1500).
+(2) An End column. If not given, events are given a default duration.
+(3) A Calendar column. This is intended to allow separate calendars 
+    to be generated from a single spreadsheet. If no Calendar column
+    is specified, all events are generated. Otherwise, you must also
+    provide a list of the event types to include in the calendar.
+    For example, if you have events for a Main calendar, a Cadets calendar
+    and for both, the command-line for the Cadets calendar might look 
+    something like this.
+      wyc.pl --col Date=4 --col HW=11 --col Start=13 --col Event=14 --col Calendar=20 Cadet,Both
+    Note that there are no spaces around the comma.
+    
+Other options:
   -h 		Print this help.
   -v		Use .vcs format rather than iCalendar.
-  -d		Use .dba format rather than iCalendar.
+  --datebook    Use .dba format rather than iCalendar.
   -z		Use UTC rather than local time.
+  -n note       Used only for DateBook to provide a colour and icon
 EOH
 } 
-  
+
 
 my %months = (
-  "JAN" => 1,
-  "FEB" => 2,
-  "MAR" => 3,
-  "APR" => 4,
-  "MAY" => 5,
-  "JUN" => 6,
-  "JUL" => 7,
-  "AUG" => 8,
-  "SEP" => 9,
-  "OCT" => 10,
-  "NOV" => 11,
-  "DEC" => 12 );
+  'JAN' => 1,
+  'FEB' => 2,
+  'MAR' => 3,
+  'APR' => 4,
+  'MAY' => 5,
+  'JUN' => 6,
+  'JUL' => 7,
+  'AUG' => 8,
+  'SEP' => 9,
+  'OCT' => 10,
+  'NOV' => 11,
+  'DEC' => 12 );
 my $MONTHS_PREFIX_LEN = 3;
 
-# 2023 format
-# column numbers 'Programme' sheet of the spreadsheet provided (starting from 0)
-my $DAY = 5; 
-my $MONTH = 8;
-my $HW = 11;
-my $START = 13;
-my $EVENT = 14; 
-my $CALENDAR = 20;
-#my $RACES = 7;    # number of races
-#my $RACE_NO = 13; # e.g. 1 or 5&6
-#my $CB = 14;      # (CB) or blank
+# Hash of column numbers (either as A,B,C... or 1,2,3... of necessary fields.
+# To be consistent with Excel etc, count from A/1 on the CLI but from 0
+# internally.
+my %columns = (
+#  'DAY' => 5, 
+#  'MONTH' => 8,
+#  'HW' => 11,
+#  'START' => 13,
+#  'EVENT' => 14, 
+#  'CALENDAR' => 20,
+##  'RACES' => 7,    # number of races
+##  'RACE_NO' => 13, # e.g. 1 or 5&6
+##  'CB' => 14,      # (CB) or blank
+);
 
 my $VERSION = '2.0';
 my $TZ = 'TZID=Europe/London';
-my $DURATION = 2; # hours for a single race
-my $H = 'H';      # needed for the DURATION value
-my $ADVANCE = 2;  # 2 hours warning
+my $DURATION = 2;   # hours for a single race <-----------------------------------------------
+my $H = 'H';        # needed for the DURATION value
+my $ADVANCE = 200;  # 2 hours warning
 
-# not announced yet
-my $TBAhour = '10';             # so set the period to be 10.00 - 16.00
-my $TBAmin = '00'; 
-my $TBAduration = 6;
+# To Be Announced
+my $TBAhour = '09';             # so set the period to be 9.00 - 17.00
+my $TBAend_hour = '17';
 my $TBAstring = ' (times TBC)'; # string to add to TBA events
-# not applicable
-my $NAhour = '10';              # so set the period to be 10.00 - 16.00
-my $NAmin = '00'; 
-my $NAduration = 6;
+# Not Applicable
+my $NAhour = '09';              # so set the period to be 9.00 - 17.00
+my $NAend_hour = '17';
 
-# This note provided a colour and icon for REJ's DateBk5 calendar
-#my $NOTE = '##@@PC@@@A@@@@@@@@p=0D=0A';
-my $note = '';
+# This note provided a colour and icon for the DateBk5 calendar
+my $note = '##@@PC@@@A@@@@@@@@p=0D=0A';
 
+# Hash of events to generate calendar for
+my %calendar = ();
 
-GetOptions("h"   => \$opt_h,
-           "v"   => \$opt_v,
-           "d"   => \$opt_d,
-           "z"   => \$opt_z,
-           "n:s" => \$opt_n
+GetOptions('h'   => \$opt_h,                    # help
+           'col=s' => sub {                     # Specify columns
+                        my @kv = split /=/, @_[1];
+                        $columns{uc $kv[0]} = AA_int($kv[1]);
+                      }, 
+           'v'   => \$opt_v,                    # vCalendar
+           'datebook'   => \$opt_d,             # Palm DateBook
+           'z'   => \$opt_z,                    # UTC rather than local time
+           'n=s' => \$opt_n                     # Add note for DateBook
 	   );
+
 if ($opt_h) {
   help($USAGE);
   exit 0;
 }
 
-$note = $opt_n if defined $opt_n;
-
-# Set the type of events, Main or Cadet
-my $calendar = shift @ARGV;
-unless (($calendar eq 'Main') || ($calendar eq 'Cadet')) {
-  help($USAGE);
-  exit 1;
+if (defined $opt_n) {
+  warn "-n option only used by DateBook\n" unless defined $opt_d;
+  $note = $opt_n;
 }
 
-# Optional year, otherwise use current year
-my $YEAR = (@ARGV == 1) ?
-             shift @ARGV :
-             1900 + (localtime)[5];
-die "Bad year: \"$YEAR\"" if ($YEAR < 2006 || $YEAR > 2100);
+# Check that the required columns are present
+die "You must specify either --col DAY=num and --col MONTH=num, or --col DATE=num\n"
+  unless (exists($columns{'DAY'}) && exists($columns{'MONTH'})) || exists($columns{'DATE'});
+die "You must specify --col START=num\n" unless exists($columns{'START'});
+die "You must specify --col EVENT=num\n" unless exists($columns{'EVENT'});
+
+
+# Deal with remaining optional arguments: the Year and/or a list of Calendars
+my $year = 1900 + (localtime)[5];
+die 'Too many arguments' if $#ARGV > 1;
+while (my $a = shift(@ARGV)) {
+  if ($a =~ /^\d{4}$/) { # looks like Year
+    die "Bad year: \"$a\"" if ($a < 2006 || $a > 2100);
+    $year = $a;
+  } 
+  else { # should be a list of calendars
+    foreach my $c (split(/,/, $a)) {
+      if ($c =~ /^\w+$/) { # looks like a calendar
+        $calendar{$c} = 1;
+      } else {
+        die "\"$c\" is not a valid calendar name (only letters and numbers allowed)";
+      }
+    }
+  }
+}
+     
 
 my $T = 'T';
 my $Z = defined $opt_z ? 'Z' : '';      # 'Z' means UTC rather than local time
 my $DTSTAMP;
 
-# From 2013, WYC no longer has the month on a line on its own;
-# instead, each entry is ddd [n]n month, e.g. Mon 1 April
-#my $month = 1;
-#
-#skip source file headers
-#while (<>) {
-#  my @line = split /,/;
-#  my $date = $line[$DAY];
-#  my $dateUC = uc $date;
-#  if (exists $months{$dateUC}) {
-#    $month = $months{$dateUC};
-#    last;
-#  }
-#}
 
-# Print header
+# Print header for calendars
 if ($opt_d) {
   printDBAhdr();
 } else {
@@ -152,115 +208,140 @@ if ($opt_d) {
 
 # Process the source file
 while (<>) {
-  next if $. < 2;       # discard header
   chomp;
   $_ =~ s/"//g;         # excel sometimes puts ".." around entries
   my @line = split /,/;
 
-  # Is the entry for this calendar?
-  next unless ($line[$CALENDAR] =~ /Both|\Q$calendar/);
+  # Discard header and any other unlikely lines
+  die "Start column is too large\n" if $columns{'START'} > $#line;
+  unless ($line[$columns{'START'}] =~ /\s*\d+[:\.]?\d+|TB[AC]|N\/?A/i) { # doesn't look like a time
+    warn "Ignoring line $.: $_\n";
+    next;
+  }
 
-#  my $date = $line[$DAY];
+  # Discard this line unless the entry is for this calendar
+  if (exists($columns{'CALENDAR'})) {
+    die 'Calendar column-specifier is too large' if $columns{'CALENDAR'} > $#line;
+    next unless ($calendar{$line[$columns{'CALENDAR'}]} == 1);
+  }
 
-#  # update the month
-#  my $dateUC = uc $date;
-#  if (exists $months{$dateUC}) {
-#    $month = $months{$dateUC};
-#    next;
-#  }
+  # Get the day and month
+  my $day;
+  my $num;
+  my $month;
+  if (exists($columns{'DAY'}) && exists($columns{'MONTH'})) {
+    # get the month number
+    $month = ($line[$columns{'MONTH'}] =~ /^\d+\d?$/) ?
+      $line[$columns{'MONTH'}] :
+      0 + $months{substr(uc $3,0, $MONTHS_PREFIX_LEN)};
+    unless (($month >= 1 && $month <= 12)) {
+      bad("Invalid month $month $line[$columns{'MONTH'}]", $.); 
+      next; 
+    }
 
-#  # convert the day
-#  # unfortunately the WYC data is unreliably formatted here
-#  my $day;
-#  my $num;
-#  my $month;
-#  if ($date =~ /^([A-Za-z]+)\s*([0-9]+)[snrt][tdh]\s*([A-Za-z]+)/) { #eg Sun 6th Mar
-#  	$day = $1;
-#  	$num = $2;
-#       $month = $months{substr(uc $3,0, $MONTHS_PREFIX_LEN)};
-#  }
-#  else {warn "header or BAD RECORD \"$_\" at line $.\ndate=\"$date\"\nCannot parse date.\n"; next; }
+    # get the day number
+    $num = $line[$columns{'DAY'}];
+    unless ($num =~ /^\d\d?$/) {
+      bad("Cannot understand day number \"$num\"", $.); 
+      next; 
+    }
+    unless (($num >= 1) && ($num <= Date_DaysInMonth($month, $year))) {
+      bad ("$num is out of range for a day in month $month", $.); 
+      next; 
+    }
   
-  # get the day number
-  my $num = $line[$DAY];
-  unless ($num =~ /^\d\d?$/) {
-    warn "BAD RECORD \"$_\" at line $.\nCannot parse day number \"$num\".\n"; 
-    next; 
-  }
-  unless (($num >= 1) && ($num <= 31)) {
-    warn "BAD RECORD \"$_\" at line $.\nCannot parse day number.\n"; 
-    next; 
-  }
-
-  # get the month number
-  my $month = $line[$MONTH];
-  unless ($month =~ /^\d+\d?$/) {
-    warn "BAD RECORD \"$_\" at line $.\nCannot parse month number.\n"; 
-    next; 
-  }
-  unless (($month >= 1 && $month <= 12)) {
-    warn "BAD RECORD \"$_\" at line $.\nCannot parse month number.\n"; 
-    next; 
+  } elsif (exists($columns{'DATE'})) {
+    # parse a date
+    my $date = ParseDate($line[$columns{'DATE'}]);
+    if (! $date) {
+      bad("Bad date $line[$columns{'DATE'}]", $.);
+      next;
+    }
+    if ($date =~ /^(\d{4})(\d{2})(\d{2})/) {
+      warn("Year doesn't match on line $.\n") unless ($1 == $year);
+      $month = $2;
+      $num = $3;
+    }
+    else {
+      bad('Cannot find the date', $.);
+      next;
+    }
+  } else {
+    die "PANIC on line $.";
   }
 
-  # get the event
-  my $event = $line[$EVENT];
-  #$event = "$event $line[$RACE_NO]" unless $line[$RACE_NO] eq '';
-  #$event = "$event $line[$CB]" unless $line[$CB] eq '';
+  # Get the event
+  my $event = $line[$columns{'EVENT'}];
+  #$event = "$event $line[$columns{'RACE_NO'}]" unless $line[$columns{'RACE_NO'}] eq '';
+  #$event = "$event $line[$columns{'CB'}]" unless $line[columns{'CB'}] eq '';
   $event =~ s/\s+$//g;
   $event =~ s/\s+,/,/g;
 
 #  # sanity check number of races
-#  if ($line[$RACES] > 1) {
+#  if ($line[$columns{'RACES'}] > 1) {
 #    unless ($event =~ /\d\&\d/) {
 #      warn "BAD RECORD \"$_\" at line $.\nWrong number of races\n"; 
 #      next;
 #    }
 #  }
 
-  # get the start time
-  # there has been no WYC consistency here :-(
+  # Get the start and end times
+  # times before 1000 are sometimes recorded with only 3 digits
   my $hour;
   my $min;
-  if ($line[$START] =~ /^(\d\d):?(\d\d)/) {
+  my $end_hour;
+  my $end_min;
+
+  if ($line[$columns{'START'}] =~ /^(\d\d?)[:\.]?(\d\d)/) {
     $hour = $1;
     $min = $2;
-#    $duration = $DURATION + ($line[$RACES] - 1); # Allow extra hour for each additional race
+    if (exists($columns{'END'}) && ($line[$columns{'END'}] =~ /^(\d\d?)[:\.]?(\d\d)/)) {
+      $end_hour = sprintf("%02d", $1);
+      $end_min = $2;
+    } else {
+      # assume more than one race if event string includes 
+      # more than one separate number, and allow an extra hour 
+#      $duration = $DURATION + ($line[$columns{'RACES'}] - 1); # Allow extra hour for each additional race
+      $end_hour = $hour + (($event =~ /\d\\D+\d/) ? $DURATION + 1 : $DURATION);
+      $end_min = $min;
+      if ($end_hour > 24) {
+        warn "Event on line $. cannot span midnight! $event, $hour\n";
+        $end_hour = '23';
+        $end_min = '59';
+      }
+    }
+    $hour = sprintf("%02d", $hour);
   } 
-  # times before 1000 are sometimes recorded with only 3 digits
-  elsif ($line[$START] =~ /^(\d):?(\d\d)/) {
-    $hour = 0 . $1;
-    $min = $2;
-#    $duration = $DURATION + ($line[$RACES] - 1); # Allow extra hour for each additional race
-  } 
-  elsif ($line[$START] =~ /TBA|TBC|-/i || $line[$START] eq '') {
+  elsif ($line[$columns{'START'}] =~ /TBA|TBC|-/i || $line[$columns{'START'}] eq '') {
     $hour = $TBAhour;
-    $min = $TBAmin;
+    $min = '00';
+    $end_hour = $TBAend_hour;
+    $end_min = '00';
     $event = $event . $TBAstring;
- #   $duration = $TBAduration;
   }
-  elsif ($line[$START] =~ /N\/?A/i) {
+  elsif ($line[$columns{'START'}] =~ /N\/?A/i) {
     $hour = $NAhour;
-    $min = $NAmin;
- #   $duration = $TBAduration;
+    $min = '00';
+    $end_hour = $NAend_hour;
+    $end_min = '00';
   }
-  else { warn "BAD RECORD \"$_\" at line $.\nCannot parse time.\n"; next; }
+  else {
+    bad("Cannot understand Start time $line[$columns{'START'}]", $.); 
+    next; 
+  }
 
-  # allow extra hour if more than one race
-  my $duration = ($event =~ /\d\/\d/) ? $DURATION + 1 : $DURATION;
 
-  # get highwater time
-  my $highwater = $line[$HW];
+  # Get highwater time
+  my $highwater = $line[$columns{'HW'}];
   
   #print the record
-#  my $highwater = sprintf("%04d", $line[$HW]);
-
   if ($opt_d) {
+    my $duration = $end_hour - $hour; # FIXME or omit DateBook
     printDBA($num, $month, $hour, $min, $duration, $event, $highwater);
   } elsif ($opt_v) {
-    printVCAL($num, $month, $hour, $min, $duration, $event, $highwater);
+    printVCAL($num, $month, $hour.$min, $end_hour.$end_min, $event, $highwater);
   } else {
-    printICAL($num, $month, $hour, $min, $duration, $event, $highwater);
+    printICAL($num, $month, $hour.$min, $end_hour.$end_min, $event, $highwater);
   }
 }
 
@@ -270,15 +351,43 @@ printEOCAL() unless $opt_d;
 
 # SUBROUTINES -----------------------------------------
 
-# write header
-# format is:
+# Bad input warning
+sub bad($$) { 
+  my ($msg, $lno) = @_;
+  warn ("BAD RECORD: $msg on line $lno so ignoring this line.\n");
+}
+
+
+# Convert column number (whether integer or AA-style) to zero-based integer 
+# Allow liberal interpretations of integer
+sub AA_int($) {
+  my $aa = shift(@_);
+  if ($aa =~ /(\d+)/) {
+    return $1 - 1;
+  } else {
+    my $val = 0;
+    while ($aa =~ /([a-z])/ig) {
+      my $ch = uc $1;
+      print "$ch\n";
+      $val = $val * 26 + (ord($ch) - ord('A')) + 1;
+    }
+    die "Bad column number: $aa" unless $val > 0;
+    return $val - 1;
+  }
+}
+
+
+# Write header
+
+# DBA format is:
 # day/month/year	hour:minute	duration	details (HW=highwater)
 sub printDBAhdr () {
-  print "#WYC racing schedule $YEAR\n";
+  print "#WYC racing schedule $year\n";
   printf "%s\t%s\t%s\t%s", '%d/%m/%y', '%h:%i', '%t', '%v';
   print "\t%n" if defined $opt_n;
   print "\n";
 }
+
 
 # iCalendar and vCalendar header
 # TODO nice to include X-WR-CALNAME: property
@@ -292,12 +401,13 @@ CALSCALE:GREGORIAN
 EOH
 }
 
+
 # Print .dba entry
 sub printDBA ($$$$$$$){
   my($num, $month, $hour, $min, $duration, $event, $highwater) = @_;
   my $hour = $1;
   my $min = $2;
-  print "$num/$month/$YEAR\t";
+  print "$num/$month/$year\t";
   print "$hour:$min\t$duration\t";
   print  "WYC $event";
   printf ", HW=%s", $highwater unless $highwater eq '';
@@ -306,30 +416,21 @@ sub printDBA ($$$$$$$){
 }  
 
 # Print vCalendar entry
-sub printVCAL ($$$$$$$){
-  my($num, $month, $hour, $min, $duration, $event, $highwater) = @_;
+sub printVCAL ($$$$$$){
+  my($num, $month, $start, $end, $event, $highwater) = @_;
   my $hw = $highwater eq '' ? '' : ", HW=$highwater";
-  # specify times as local if we span DST
-  my $start = $hour.$min.'00';
-  my $day = sprintf "%4d%02d%02d", $YEAR, $month, $num;
-  my $end_hour = $hour + $duration;
-  my $end;
-  if ($end_hour >= 24) {        # assume $hour+$DURATION < 2400
-    warn "Event spans midnight! $event, $hour, $duration\n";
-    $end = "235900";
-  } else {
-    $end = sprintf "%02d%s00", $end_hour, $min;
-  }
-  my $alarm_hour = $hour - $ADVANCE;
-  my $alarm;
-  if ($alarm_hour < 0) {        # assume nothing starts before ADVANCE:00!
+  my $day = sprintf "%4d%02d%02d", $year, $month, $num;
+  my $alarm = $start - $ADVANCE;
+  if ($alarm < 0) { 
     warn "Alarm set for previous day: $event\n";
     $alarm = "000000";
   } else { 
-    $alarm = sprintf "%02d%s00", $alarm_hour, $min;
+    $alarm = sprintf "%04d00", $alarm;
   }
   # sanity check
-  sanity($day, $start, $end, $alarm);
+  #sanity($day, $start, $end, $alarm);
+  $start = $start.'00';
+  $end = $end.'00';
   print <<"EOV"
 BEGIN:VEVENT
 SUMMARY:WYC $event$hw
@@ -338,36 +439,26 @@ DTSTART;$TZ:$day$T$start
 DTEND;$TZ:$day$T$end
 END:VEVENT
 EOV
-#DESCRIPTION;QUOTED-PRINTABLE:$note
 #DALARM:$day$T$alarm$Z
 }
 
 
 # Print iCalendar entry
-sub printICAL ($$$$$$$){
-  my($num, $month, $hour, $min, $duration, $event, $highwater) = @_;
+sub printICAL ($$$$$$){
+  my($num, $month, $start, $end, $event, $highwater) = @_;
   my $hw = $highwater eq '' ? '' : ", HW=$highwater";
-  # specify times as local if we span DST
-  my $start = $hour.$min.'00';
-  my $day = sprintf "%4d%02d%02d", $YEAR, $month, $num;
-  my $end_hour = $hour + $duration;
-  my $end;
-  if ($end_hour >= 24) {        # assume $hour+$DURATION < 2400
-    warn "Event spans midnight! $event, $hour, $duration\n";
-    $end = "235900";
-  } else {
-    $end = sprintf "%02d%s00", $end_hour, $min;
-  }
- my $alarm_hour = $hour - $ADVANCE;
- my $alarm;
- if ($alarm_hour < 0) {         # assume nothing starts before ADVANCE:00!
+  my $day = sprintf "%4d%02d%02d", $year, $month, $num;
+ my $alarm = $start - $ADVANCE;
+ if ($alarm < 0) { 
    warn "Alarm set for previous day: $event\n";
    $alarm = "000000";
  } else { 
-   $alarm = sprintf "%02d%s00", $alarm_hour, $min;
+   $alarm = sprintf "%04d00", $alarm;
  }
   # sanity check
-  sanity($day, $start, $end, $alarm);
+  #sanity($day, $start, $end, $alarm);
+  $start = $start.'00';
+  $end = $end.'00';
   my $uid = uuid();
   print <<"EOI"
 BEGIN:VEVENT
@@ -379,7 +470,6 @@ DTEND;$TZ:$day$T$end
 SUMMARY:WYC $event$hw
 END:VEVENT
 EOI
-#  print "DESCRIPTION;QUOTED-PRINTABLE:$note\n" unless $note eq '';
 #DALARM:$day$T$alarm$Z
 }
 
@@ -390,6 +480,7 @@ sub printEOCAL() {
 }
 
 # Sanity check on lengths
+# FIXME do we need this?
 sub sanity($$$$) {
   my ($day, $start, $end, $alarm) = @_;
   die "Bad length for day $day\n"     unless length($day) == 8;   # yyyymmdd 
@@ -400,13 +491,13 @@ sub sanity($$$$) {
 
 =begin comment
 Improvements
-0. Add to the spreadsheet a CALENDAR column with values e.g. Main, Cadets, 
+/. Add to the spreadsheet a CALENDAR column with values e.g. Main, Cadets, 
    Both. Use this either to filter in Excel or add it to the user interface
    and filter in the tool.
-1. Ensure that times in an format (hhmm, hh:mm, any more?) can be parsed.
-2. Choose date from either a pair of DAY and MONTH columns or a single DATE
+/. Ensure that times in an format (hhmm, hh:mm, any more?) can be parsed.
+/. Choose date from either a pair of DAY and MONTH columns or a single DATE
    column (e.g. Mon 12 Aug) which would need to be parsed and allow variations.
-3. Rather than hard-wired column numbers, get these from the user (but beware
+/. Rather than hard-wired column numbers, get these from the user (but beware
    that Excel counts from A/1) but perl counts from 0.
 4. Provide a GUI rather than using the command line. This would overcome the 
    problems in (3) as user could select the spreadsheet, the tab to use, the
@@ -438,5 +529,7 @@ Improvements
 
    Python also provides a GUI.
 
-6. Operate on the .xlsx directly rather than on a .csv.
+6. Alternatively, provide a web service, e.g. using JavaScript.
+
+7. Operate on the .xlsx directly rather than on a .csv. Security issues?
 =end comment
