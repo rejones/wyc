@@ -212,9 +212,14 @@ while (<>) {
   $_ =~ s/"//g;         # excel sometimes puts ".." around entries
   my @line = split /,/;
 
+  # Defend against regex DOS attacks
+  foreach my $i (0 .. $#line) {
+    $line[$i] =~ s/^\s+|(?<=!\s)\s+$//; # otherwise trailing spaces is polynomial
+  }
+
   # Discard header and any other unlikely lines
   die "Start column is too large\n" if $columns{'START'} > $#line;
-  unless ($line[$columns{'START'}] =~ /\s*\d+[:\.]?\d+|TB[AC]|N\/?A/i) { # doesn't look like a time
+  unless ($line[$columns{'START'}] =~ /\d+[:\.]?\d+|TB[AC]|N\/?A/i) { # doesn't look like a time
     warn "Ignoring line $.: $_\n";
     next;
   }
@@ -231,7 +236,7 @@ while (<>) {
   my $month;
   if (exists($columns{'DAY'}) && exists($columns{'MONTH'})) {
     # get the month number
-    $month = ($line[$columns{'MONTH'}] =~ /^\d+\d?$/) ?
+    $month = ($line[$columns{'MONTH'}] =~ /^\d\d?$/) ?
       $line[$columns{'MONTH'}] :
       0 + $months{substr(uc $3,0, $MONTHS_PREFIX_LEN)};
     unless (($month >= 1 && $month <= 12)) {
@@ -274,8 +279,7 @@ while (<>) {
   my $event = $line[$columns{'EVENT'}];
   #$event = "$event $line[$columns{'RACE_NO'}]" unless $line[$columns{'RACE_NO'}] eq '';
   #$event = "$event $line[$columns{'CB'}]" unless $line[columns{'CB'}] eq '';
-  $event =~ s/\s+$//g;
-  $event =~ s/\s+,/,/g;
+  #$event =~ s/\s+,/,/g;    # re is polynomial - additional spaces are user's problem
 
 #  # sanity check number of races
 #  if ($line[$columns{'RACES'}] > 1) {
@@ -302,7 +306,7 @@ while (<>) {
       # assume more than one race if event string includes 
       # more than one separate number, and allow an extra hour 
 #      $duration = $DURATION + ($line[$columns{'RACES'}] - 1); # Allow extra hour for each additional race
-      $end_hour = $hour + (($event =~ /\d\\D+\d/) ? $DURATION + 1 : $DURATION);
+      $end_hour = $hour + (($event =~ /\d\D+\d/) ? $DURATION + 1 : $DURATION);
       $end_min = $min;
       if ($end_hour > 24) {
         warn "Event on line $. cannot span midnight! $event, $hour\n";
