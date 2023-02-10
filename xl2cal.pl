@@ -50,13 +50,14 @@ and, optionally, the types of event to include, and/or the year
 if the calendar is being generated for a year other than the current one.
 
 Columns are specified by '--col field=column_number' where
-field           Day, Month, Date, HW, Start, Event, Calendar.
+field           Day, Month, Date, HW, Start, End, Duration, Event, Calendar.
 column_number   Specified either alphabetically or numerically.
 Field names are case-insensitive.
 
 Mandatory fields that MUST be specified by --cols are:
 (1) The date column(s) of the event must be specified by
     EITHER --col Day=num and --col Month=num OR --col Date=num. 
+    -c can be used instead of --col.
     If Day is specified, an entry in the Day column may be  
     a cardinal (e.g. 6) or an ordinal (e.g. 6th) number.
     If Month is specified, the entries should be either a cardinal number
@@ -73,7 +74,8 @@ Optional fields are:
 (1) The high-water (HW) columns. An entry in this column (e.g. 1500), 
     if any, is appended to the entry in the Event column (e.g. Race 1)
     to give e.g. (Race 1, HW=1500).
-(2) An End column. If not given, events are given a default duration.
+(2) An End or Duration column. If neither is provided, events are given
+    a default duration.
 (3) A Calendar column. This is intended to allow separate calendars 
     to be generated from a single spreadsheet. If no Calendar column
     is specified, all events are generated. Otherwise, you must also
@@ -147,6 +149,9 @@ my %calendar = ();
 GetOptions('h'   => \$opt_h,                    # help
            'col=s' => sub {                     # Specify columns
                         my @kv = split /=/, @_[1];
+                        if ($kv[0] =~ /HIGH\s*WATER/i) {
+                          $kv[0] = 'HW';
+                        }
                         $columns{uc $kv[0]} = AA_int($kv[1]);
                       }, 
            'v'   => \$opt_v,                    # vCalendar
@@ -302,6 +307,13 @@ while (<>) {
     if (exists($columns{'END'}) && ($line[$columns{'END'}] =~ /^(\d\d?)[:\.]?(\d\d)/)) {
       $end_hour = sprintf("%02d", $1);
       $end_min = $2;
+    } elsif (exists($columns{'DURATION'}) && ($line[$columns{'DURATION'}] =~ /^(\d\d?)[:\.]?(\d\d)/)) {
+      $end_hour = $hour + sprintf("%02d", $1);
+      $end_min = $min + $2;
+      while ($end_min > 60) {
+        $end_hour = $end_hour + 1;
+        $end_min = $end_min - 60;
+      }
     } else {
       # assume more than one race if event string includes 
       # more than one separate number, and allow an extra hour 
