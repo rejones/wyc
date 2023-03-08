@@ -28,7 +28,7 @@ sub printICAL($$$$$$);
 sub printEOCAL();
 sub sanity($$$$);
 
-my $USAGE = 'Usage: wyc.pl [-h] [-v] [--datebook] [-z] --col field=column_number... [calendars] [year] < in.csv > out.vcs';
+my $USAGE = 'Usage: wyc.pl [-h] [-v] [--datebook] [-z] --col field=column_number... [calendars] [year] < in.csv > out.ics';
 
 # Print help message
 sub help($) {
@@ -51,7 +51,8 @@ if the calendar is being generated for a year other than the current one.
 
 Columns are specified by '--col field=column_number' where
 field           Day, Month, Date, HW, Start, End, Duration, Event, Calendar.
-column_number   Specified either alphabetically or numerically.
+column_number   Specified either alphabetically or numerically 
+                (counting from 1 or A).
 Field names are case-insensitive.
 
 Mandatory fields that MUST be specified by --cols are:
@@ -83,7 +84,7 @@ Optional fields are:
     For example, if you have events for a Main calendar, a Cadets calendar
     and for both, the command-line for the Cadets calendar might look 
     something like this.
-      wyc.pl --col Date=4 --col HW=11 --col Start=13 --col Event=14 --col Calendar=20 Cadet,Both
+      xl2cal.pl --col Date=3 --col HW=11 --col Start=13 --col Event=14 --col Calendar=20 Cadet,Both
     Note that there are no spaces around the comma.
     
 Other options:
@@ -176,7 +177,6 @@ die "You must specify either --col DAY=num and --col MONTH=num, or --col DATE=nu
 die "You must specify --col START=num\n" unless exists($columns{'START'});
 die "You must specify --col EVENT=num\n" unless exists($columns{'EVENT'});
 
-
 # Deal with remaining optional arguments: the Year and/or a list of Calendars
 my $year = 1900 + (localtime)[5];
 die 'Too many arguments' if $#ARGV > 1;
@@ -196,7 +196,6 @@ while (my $a = shift(@ARGV)) {
   }
 }
      
-
 my $T = 'T';
 my $Z = defined $opt_z ? 'Z' : '';      # 'Z' means UTC rather than local time
 my $DTSTAMP;
@@ -214,6 +213,7 @@ if ($opt_d) {
 # Process the source file
 while (<>) {
   chomp;
+  $_ =~ s/\r//g;        # if there is a stray carriage return
   $_ =~ s/"//g;         # excel sometimes puts ".." around entries
   my @line = split /,/;
 
@@ -232,7 +232,7 @@ while (<>) {
   # Discard this line unless the entry is for this calendar
   if (exists($columns{'CALENDAR'})) {
     die 'Calendar column-specifier is too large' if $columns{'CALENDAR'} > $#line;
-    next unless ($calendar{$line[$columns{'CALENDAR'}]} == 1);
+    next unless exists($calendar{$line[$columns{'CALENDAR'}]});
   }
 
   # Get the day and month
@@ -412,6 +412,22 @@ sub printCALhdr() {
 BEGIN:VCALENDAR
 VERSION:$VERSION
 PRODID:Richard Jones wyc.pl generated
+BEGIN:VTIMEZONE
+TZID:Europe/London
+X-LIC-LOCATION:Europe/London
+BEGIN:DAYLIGHT
+TZOFFSETFROM:+0000
+TZOFFSETTO:+0100
+TZNAME:BST
+DTSTART:19700329T010000
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0000
+TZNAME:GMT
+DTSTART:19701025T020000
+END:STANDARD
+END:VTIMEZONE
 X-WR-TIMEZONE:Europe/London
 CALSCALE:GREGORIAN
 EOH
@@ -463,6 +479,8 @@ EOV
 sub printICAL ($$$$$$){
   my($num, $month, $start, $end, $event, $highwater) = @_;
   my $hw = $highwater eq '' ? '' : ", HW=$highwater";
+  my $summary = $event.$hw;
+  $summary =~ s/.{63}\K/\n /sg; # fold lines longer than 75 octets
   my $day = sprintf "%4d%02d%02d", $year, $month, $num;
  my $alarm = $start - $ADVANCE;
  if ($alarm < 0) { 
@@ -483,7 +501,7 @@ UID:$uid
 DTSTAMP;$TZ:$DTSTAMP
 DTSTART;$TZ:$day$T$start
 DTEND;$TZ:$day$T$end
-SUMMARY:WYC $event$hw
+SUMMARY:WYC $summary
 END:VEVENT
 EOI
 #DALARM:$day$T$alarm$Z
