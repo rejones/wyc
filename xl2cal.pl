@@ -15,7 +15,7 @@ use UUID 'uuid';
 use Date::Manip qw(ParseDate Date_Init Date_DaysInMonth);
 &Date_Init("DateFormat=non-US");
 use Data::Dumper;
-use vars qw($opt_h $opt_v $opt_d $opt_z $opt_n);
+use vars qw($opt_h $opt_v $opt_d $opt_tz $opt_n);
 
 sub help($);
 sub bad($$);
@@ -23,12 +23,12 @@ sub AA_int($);
 sub printDBAhdr();
 sub printCALhdr();
 sub printDBA($$$$$$$);
-sub printVCAL($$$$$$);
-sub printICAL($$$$$$);
+sub printVCAL($$$$$$$$);
+sub printICAL($$$$$$$$);
 sub printEOCAL();
 sub sanity($$$$);
 
-my $USAGE = 'Usage: wyc.pl [-h] [-v] [--datebook] [-z] --col field=column_number... [calendars] [year] < in.csv > out.ics';
+my $USAGE = 'Usage: wyc.pl [-h] [-v] [--datebook] [--tz timezone] --col field=column_number... [calendars] [year] < in.csv > out.ics';
 
 # Print help message
 sub help($) {
@@ -86,12 +86,12 @@ Optional fields are:
     something like this.
       xl2cal.pl --col Date=3 --col HW=11 --col Start=13 --col Event=14 --col Calendar=20 Cadet,Both
     Note that there are no spaces around the comma.
+(4) A time zone (default: Europe/London)
     
 Other options:
   -h 		Print this help.
   -v		Use .vcs format rather than iCalendar.
   --datebook    Use .dba format rather than iCalendar.
-  -z		Use UTC rather than local time.
   -n note       Used only for DateBook to provide a colour and icon
 EOH
 } 
@@ -127,11 +127,11 @@ my %columns = (
 ##  'CB' => 14,      # (CB) or blank
 );
 
-my $VERSION = '2.0';
-my $TZ = 'TZID=Europe/London';
+my $VERSION = '2.0'; # for iCalendar
+my $TZ = 'Europe/London';
 my $DURATION = 2;   # hours for a single race <-----------------------------------------------
 my $H = 'H';        # needed for the DURATION value
-my $ADVANCE = 200;  # 2 hours warning
+my $ADVANCE = 2;    # 2 hours warning
 
 # To Be Announced
 my $TBAhour = '09';             # so set the period to be 9.00 - 17.00
@@ -157,7 +157,7 @@ GetOptions('h'   => \$opt_h,                    # help
                       }, 
            'v'   => \$opt_v,                    # vCalendar
            'datebook'   => \$opt_d,             # Palm DateBook
-           'z'   => \$opt_z,                    # UTC rather than local time
+           'tz=s'   => \$TZ,                    # Time zone
            'n=s' => \$opt_n                     # Add note for DateBook
 	   );
 
@@ -170,6 +170,8 @@ if (defined $opt_n) {
   warn "-n option only used by DateBook\n" unless defined $opt_d;
   $note = $opt_n;
 }
+
+$VERSION = '1.0' if (defined $opt_v); # for vCalendar
 
 # Check that the required columns are present
 die "You must specify either --col DAY=num and --col MONTH=num, or --col DATE=num\n"
@@ -197,7 +199,7 @@ while (my $a = shift(@ARGV)) {
 }
      
 my $T = 'T';
-my $Z = defined $opt_z ? 'Z' : '';      # 'Z' means UTC rather than local time
+my $Z = 'Z';      # 'Z' means UTC rather than local time
 my $DTSTAMP;
 
 
@@ -206,6 +208,7 @@ if ($opt_d) {
   printDBAhdr();
 } else {
   my $dt = DateTime->now;
+  $dt->set_time_zone('UTC');
   $DTSTAMP = $dt->ymd('').$T.$dt->hms('');
   printCALhdr();
 }
@@ -282,17 +285,6 @@ while (<>) {
 
   # Get the event
   my $event = $line[$columns{'EVENT'}];
-  #$event = "$event $line[$columns{'RACE_NO'}]" unless $line[$columns{'RACE_NO'}] eq '';
-  #$event = "$event $line[$columns{'CB'}]" unless $line[columns{'CB'}] eq '';
-  #$event =~ s/\s+,/,/g;    # re is polynomial - additional spaces are user's problem
-
-#  # sanity check number of races
-#  if ($line[$columns{'RACES'}] > 1) {
-#    unless ($event =~ /\d\&\d/) {
-#      warn "BAD RECORD \"$_\" at line $.\nWrong number of races\n"; 
-#      next;
-#    }
-#  }
 
   # Get the start and end times
   # times before 1000 are sometimes recorded with only 3 digits
@@ -317,7 +309,6 @@ while (<>) {
     } else {
       # assume more than one race if event string includes 
       # more than one separate number, and allow an extra hour 
-#      $duration = $DURATION + ($line[$columns{'RACES'}] - 1); # Allow extra hour for each additional race
       $end_hour = $hour + (($event =~ /\d\D+\d/) ? $DURATION + 1 : $DURATION);
       $end_min = $min;
       if ($end_hour > 24) {
@@ -355,9 +346,9 @@ while (<>) {
     my $duration = $end_hour - $hour; # FIXME or omit DateBook
     printDBA($num, $month, $hour, $min, $duration, $event, $highwater);
   } elsif ($opt_v) {
-    printVCAL($num, $month, $hour.$min, $end_hour.$end_min, $event, $highwater);
+    printVCAL($num, $month, $hour, $min, $end_hour, $end_min, $event, $highwater);
   } else {
-    printICAL($num, $month, $hour.$min, $end_hour.$end_min, $event, $highwater);
+    printICAL($num, $month, $hour, $min, $end_hour, $end_min, $event, $highwater);
   }
 }
 
@@ -371,6 +362,26 @@ printEOCAL() unless $opt_d;
 sub bad($$) { 
   my ($msg, $lno) = @_;
   warn ("BAD RECORD: $msg on line $lno so ignoring this line.\n");
+}
+
+
+# Convert hour to UTC
+# Always output UTC times. If we were to write TZ=timezone, then 
+# strict conformance with the  RFC 5545 specification) requires that 
+# this timezone be fully specified (including BST and GMT start dates and
+# offsets, etc).  Of course, these dates are the last Sundays in March/October,
+# so they change... :-(
+sub convUTC($$$$) {
+  my ($year, $month, $day, $hour) = @_;
+  my $dt = DateTime->new(
+    year      => $year,
+    month     => $month,
+    day       => $day,
+    hour      => $hour,
+    time_zone => $TZ,
+  );
+  $dt->set_time_zone('UTC');
+  return sprintf("%02d", $dt->hour);
 }
 
 
@@ -411,24 +422,7 @@ sub printCALhdr() {
   print <<"EOH"
 BEGIN:VCALENDAR
 VERSION:$VERSION
-PRODID:Richard Jones wyc.pl generated
-BEGIN:VTIMEZONE
-TZID:Europe/London
-X-LIC-LOCATION:Europe/London
-BEGIN:DAYLIGHT
-TZOFFSETFROM:+0000
-TZOFFSETTO:+0100
-TZNAME:BST
-DTSTART:19700329T010000
-END:DAYLIGHT
-BEGIN:STANDARD
-TZOFFSETFROM:+0100
-TZOFFSETTO:+0000
-TZNAME:GMT
-DTSTART:19701025T020000
-END:STANDARD
-END:VTIMEZONE
-X-WR-TIMEZONE:Europe/London
+PRODID:Richard Jones xl2cal.pl generated
 CALSCALE:GREGORIAN
 EOH
 }
@@ -448,10 +442,12 @@ sub printDBA ($$$$$$$){
 }  
 
 # Print vCalendar entry
-sub printVCAL ($$$$$$){
-  my($num, $month, $start, $end, $event, $highwater) = @_;
+sub printVCAL ($$$$$$$$){
+  my($num, $month, $start, $min, $end, $end_min, $event, $highwater) = @_;
   my $hw = $highwater eq '' ? '' : ", HW=$highwater";
   my $day = sprintf "%4d%02d%02d", $year, $month, $num;
+  $start = convUTC($year, $month, $num, $start);
+  $end = convUTC($year, $month, $num, $end);
   my $alarm = $start - $ADVANCE;
   if ($alarm < 0) { 
     warn "Alarm set for previous day: $event\n";
@@ -461,14 +457,14 @@ sub printVCAL ($$$$$$){
   }
   # sanity check
   #sanity($day, $start, $end, $alarm);
-  $start = $start.'00';
-  $end = $end.'00';
+  $start = $start.$min.'00';
+  $end = $end.$end_min.'00';
   print <<"EOV"
 BEGIN:VEVENT
 SUMMARY:WYC $event$hw
-DTSTAMP;$TZ:$DTSTAMP
-DTSTART;$TZ:$day$T$start
-DTEND;$TZ:$day$T$end
+DTSTAMP:$DTSTAMP$Z
+DTSTART:$day$T$start$Z
+DTEND:$day$T$end$Z
 END:VEVENT
 EOV
 #DALARM:$day$T$alarm$Z
@@ -476,31 +472,33 @@ EOV
 
 
 # Print iCalendar entry
-sub printICAL ($$$$$$){
-  my($num, $month, $start, $end, $event, $highwater) = @_;
+sub printICAL ($$$$$$$$){
+  my($num, $month, $start, $min, $end, $end_min, $event, $highwater) = @_;
   my $hw = $highwater eq '' ? '' : ", HW=$highwater";
   my $summary = $event.$hw;
   $summary =~ s/.{63}\K/\n /sg; # fold lines longer than 75 octets
   my $day = sprintf "%4d%02d%02d", $year, $month, $num;
- my $alarm = $start - $ADVANCE;
- if ($alarm < 0) { 
-   warn "Alarm set for previous day: $event\n";
-   $alarm = "000000";
- } else { 
-   $alarm = sprintf "%04d00", $alarm;
- }
+  $start = convUTC($year, $month, $num, $start);
+  $end = convUTC($year, $month, $num, $end);
+  my $alarm = $start - $ADVANCE;
+  if ($alarm < 0) { 
+    warn "Alarm set for previous day: $event\n";
+    $alarm = "000000";
+  } else { 
+    $alarm = sprintf "%04d00", $alarm;
+  }
   # sanity check
   #sanity($day, $start, $end, $alarm);
-  $start = $start.'00';
-  $end = $end.'00';
+  $start = $start.$min.'00';
+  $end = $end.$end_min.'00';
   my $uid = uuid();
   print <<"EOI"
 BEGIN:VEVENT
-CREATED;$TZ:$DTSTAMP
+CREATED:$DTSTAMP$Z
 UID:$uid
-DTSTAMP;$TZ:$DTSTAMP
-DTSTART;$TZ:$day$T$start
-DTEND;$TZ:$day$T$end
+DTSTAMP:$DTSTAMP$Z
+DTSTART:$day$T$start$Z
+DTEND:$day$T$end$Z
 SUMMARY:WYC $summary
 END:VEVENT
 EOI
@@ -514,7 +512,7 @@ sub printEOCAL() {
 }
 
 # Sanity check on lengths
-# FIXME do we need this?
+# TODO do we need this?
 sub sanity($$$$) {
   my ($day, $start, $end, $alarm) = @_;
   die "Bad length for day $day\n"     unless length($day) == 8;   # yyyymmdd 
