@@ -1,0 +1,122 @@
+/* styles.css */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  background-image: url("banner.png");
+  background-size: cover;
+  background-position: bottom;
+  color: #fff;
+  padding: 20px;
+}
+
+.content {
+  padding: 20px;
+}
+
+p {
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+h1 {
+  margin: 0;
+}
+
+/* Choosing the spreadsheet */
+
+#drop-zone {
+border: 2px dashed #ccc;
+  padding: 20px;
+  text-align: center;
+}
+
+#drop-zone.dragover {
+  background-color: #f2f2f2;
+}
+
+.content {
+  padding: 20px;
+}
+
+.sheet-chooser-group {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  align-items: center; /* Vertically center the items */
+  margin-bottom: 20px; /* Add space below the sheet-chooser-group */  
+}
+
+.landing-site {
+  flex: 1 0 auto; /* Allow the div to expand */
+  margin-top: 20px;
+  margin-right: 10px; /* Add space between the divs */
+  margin-bottom: 20px;
+}
+
+.select-box {
+  flex: 0 1 auto; /* Retain natural width */
+}
+
+/* Additional styles for select box layout */
+label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+select {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* The spreadsheet */
+.sheet-group {
+  /* Add space between sheet-chooser-group and sheet-group */
+  margin-top: 20px;
+}
+
+.table-container {
+  overflow: auto;
+  max-width: 100%;
+  max-height: 300px; /* Adjust the height as needed */
+}
+
+.table-wrapper {
+  display: inline-block;
+  vertical-align: top;
+}
+
+/* export button */
+button {
+  font-size: 1rem;
+  float: right;
+  margin-right: 10px;
+  color: black;
+  background-color: LightSkyBlue;
+  padding: 7px;
+  border: 2px solid black;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:disabled,
+button[disabled]{
+  color: white;
+  background-color: grey;
+}
+#cancel-calendar-choice-button {
+  float:left;
+  margin-left: 10px;
+  background-color: transparent;
+}
+
+label, input[type="checkbox"] {
+  margin-left: 10px;
+  display: inline-block;
+  vertical-align:middle;
+}

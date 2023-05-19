@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Webpage</title>
+  <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>xl2cal</h1>
+  </header>
+  
+  <!-- Rest of the content will go here -->
+  <div class="content">
+    <p>x2cal is a simple tool to convert a schedule, such as a sailing club racing calendar, 
+    from a spreadsheet to an iCalendar that can be imported into Apple Calendar, Google Calendar, etc.
+    </p>
+    <h2>1. Select a spreadsheet and the year of the calendar</h2>
+
+    <!-- Select spreadsheet and year -->
+    <div class="sheet-chooser-group">
+      <div class="landing-site">
+        <div id="drop-zone" 
+             ondrop="dropHandler(event);"
+             ondragover="dragOverHandler(event);">
+          <p>Drag and drop a spreadsheet file here.</p>
+        </div>
+        <input type="file" accept=".xlsx" id="file-chooser">
+      </div>
+  
+      <div class="select-box">
+        <label for="year-dropdown">Select Year:</label>
+        <select id="year-dropdown">
+          <!-- script will generate the options -->
+        </select>
+      </div>
+    </div>
+
+    <!-- The spreadsheet -->
+    <div class="sheet-group">
+      <h2 id="sheet-header"></h2>
+      <p id="columns-instructions"></p>
+      <table id="sheet-table"></table>
+    </div>
+
+    <!-- Other components can be added here -->
+  </div>
+
+  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
+
