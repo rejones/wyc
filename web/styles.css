@@ -84,7 +84,7 @@ select {
 .table-container {
   overflow: auto;
   max-width: 100%;
-  max-height: 300px; /* Adjust the height as needed */
+  max-height: 150px; /* Adjust the height as needed */
 }
 
 .table-wrapper {
@@ -113,6 +113,16 @@ button[disabled]{
   float:left;
   margin-left: 10px;
   background-color: transparent;
+}
+
+#download-link {
+  background-color: LightSkyBlue;
+  padding: 7px;
+  border: 2px solid black;
+  border-radius: 4px;
+  margin-left: 10px;
+  color: black;
+  text-decoration: none;
 }
 
 label, input[type="checkbox"] {
