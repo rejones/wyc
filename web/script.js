@@ -1,24 +1,21 @@
 // script.js
 // Convert WYC racing schedule into .ics format that can be loaded into a calendar.
 
-//TODO
-//import { v4 as uuidv4 } from 'uuid';
-
-
-// Months 
+// Month prefixes to numbers
+// Month numbers are strings to help with padding
 const months = new Map([
-  ['JAN', 1],
-  ['FEB', 2],
-  ['MAR', 3],
-  ['APR', 4],
-  ['MAY', 5],
-  ['JUN', 6],
-  ['JUL', 7],
-  ['AUG', 8],
-  ['SEP', 9],
-  ['OCT', 10],
-  ['NOV', 11],
-  ['DEC', 12]
+  ['JAN', '1'],
+  ['FEB', '2'],
+  ['MAR', '3'],
+  ['APR', '4'],
+  ['MAY', '5'],
+  ['JUN', '6'],
+  ['JUL', '7'],
+  ['AUG', '8'],
+  ['SEP', '9'],
+  ['OCT', '10'],
+  ['NOV', '11'],
+  ['DEC', '12']
 ]);
 
 // Hash of column names to numbers.
@@ -29,39 +26,38 @@ const columnValues = ['Day', 'Month', 'Date', 'HW', 'Start', 'End', 'Duration', 
 
 // Constants
 const VERSION = '2.0'; // for iCalendar
-const TZ = 'Europe/London';
-const DURATION = 2;   // hours for a single race 
-const H = 'H';        // needed for the DURATION value
-const ADVANCE = 2;    // 2 hours warning
+const DURATION = 2;    // hours for a single race 
+const H = 'H';         // needed for the DURATION value
+const ADVANCE = 2;     // 2 hours warning
 
-// To Be Announced
+// To Be Announced times
 const TBAhour = '09';             // so set the period to be 9.00 - 17.00
 const TBAend_hour = '17';
 const TBAstring = ' (times TBC)'; // string to add to TBA events
-// Not Applicable
+// Not Applicable time
 const NAhour = '09';              // so set the period to be 9.00 - 17.00
 const NAend_hour = '17';
 
 const T = 'T';
 const Z = 'Z';      // 'Z' means UTC rather than local time
 
-let theYear;  // The year to generate the calendar for
+let theYear = new Date().getFullYear();  // The year to generate the calendar for
 
 //Calendars to use
 let allCalendars;
-let calendarsToExport = new Set();
-
-function setCalendarsToExport(cals) {
-  console.log('calendarsToExport', cals);
-  calendarsToExport = cals;
-}
+//let calendarsToExport = new Set();
+//
+//function setCalendarsToExport(cals) {
+//  //console.log('calendarsToExport', cals);
+//  calendarsToExport = cals;
+//}
 
 // The spreadsheet data
-let jsonData;
+const theData = [];
 
 // Drag and drop handlers
 function dropHandler(ev) {
-  console.log("File(s) dropped");
+  //console.log("File(s) dropped");
 
   // Prevent default behavior (Prevent file from being opened)
   ev.preventDefault();
@@ -72,20 +68,19 @@ function dropHandler(ev) {
     // If dropped items aren't files, reject them
     if (item.kind === "file") {
       const file = item.getAsFile();
-      console.log('DataTransferItemList', `… file.name = ${file.name}`);
+      //console.log('DataTransferItemList', `… file.name = ${file.name}`);
       handleFile(file);
     }
   } else {
     // Use DataTransfer interface to access the file(s)
     const file = ev.dataTransfer.files[0];
-    console.log('DataTransfer', `… file.name = ${file.name}`);
+    //console.log('DataTransfer', `… file.name = ${file.name}`);
     handleFile(file);
   }
 }
 
 function dragOverHandler(ev) {
-  console.log("File(s) in drop zone");
-
+  //console.log("File(s) in drop zone");
   // Prevent default behavior (Prevent file from being opened)
   ev.preventDefault();
 }
@@ -103,6 +98,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const startYear = currentYear - 1;
   const endYear = currentYear + 2;
 
+  // Set these years in a dropdown list, with currentYear selected
   for (let year = startYear; year <= endYear; year++) {
     const option = document.createElement('option');
     option.value = year;
@@ -113,7 +109,7 @@ window.addEventListener('DOMContentLoaded', () => {
   
   // Access the selected year from the dropdown
   theYear = yearDropdown.value;
-  console.log('Selected year:', theYear);
+  //console.log('Selected year:', theYear);
 });
 
 
@@ -122,7 +118,6 @@ function handleFileEvent(event) {
   const file = event.target.files[0];
   handleFile(file);
 }
-
 
 function handleFile(file) {
   console.log(file.name);
@@ -156,6 +151,7 @@ function renderTable(data) {
   const sheetTable = document.getElementById('sheet-table');
   const numColumns = data.length > 0 ? data[0].length : 0;
   let html = '';
+  let newRow;
 
   // Insert new row of options at index 0
   for (let i = 0; i < numColumns; i++) {
@@ -166,12 +162,15 @@ function renderTable(data) {
     }
     html += '</select></td>';
   }
-
+  
+  // Process the data, also saving it as strings
   for (let row of data) {
     html += '<tr>';
+    newRow = [];
     
     for (let cell of row) {
-      let cellValue = cell == undefined ? '' : String(cell); // Convert cell value to string
+      // Convert cell value to string
+      let cellValue = cell == undefined ? '' : String(cell);
   
       // Check if the cell format is "hh:mm"
       if (typeof cell === 'number' && cell % 1 !== 0) {
@@ -181,14 +180,16 @@ function renderTable(data) {
       }
 
       html += `<td>${cellValue}</td>`;
+      newRow.push(cellValue);
     }
 
     html += '</tr>';
+    theData.push(newRow);
   }
 
   sheetTable.innerHTML = html;
 
-  // Add horizontal and vertical sliders
+  // Add horizontal and vertical sliders to the table
   const container = document.createElement('div');
   container.className = 'table-container';
   const wrapper = document.createElement('div');
@@ -214,7 +215,7 @@ function renderTable(data) {
         columns.set(selectedOption, index);
       }
       
-      // Reset other dropdowns
+      // Clear any other dropdowns with the same value
       dropdowns.forEach((dd, i) => {
         if (i != index) {
           let val = dd.value;
@@ -224,7 +225,7 @@ function renderTable(data) {
         }
       });
 
-      //Enable export button?
+      //Enable export button once required columns are chosen
       const exportBtn = document.getElementById('export-button');
       exportBtn.disabled = !( 
                    (columns.get('Day') && columns.get('Month') || columns.get('Date'))
@@ -234,7 +235,7 @@ function renderTable(data) {
     });
   });
 
-  // Export button
+  // Create export button
   const exportBtn = document.createElement('button');
   exportBtn.id = 'export-button';
   exportBtn.innerHTML = 'Export';
@@ -244,7 +245,7 @@ function renderTable(data) {
 }
 
 
-// Find the key in a hash table 'object' with value 'value'
+// Find the key in a hashmap 'map' with value 'value'
 function getKeyByValue(map, value) {
   for (let key of map.keys()) {
     if (map.get(key) === value) {
@@ -261,10 +262,10 @@ function findCalendars() {
   if (columns.get('Calendar')) {
     const startCol = columns.get('Start');
     const calCol = columns.get('Calendar');
-    const pattern = /^\d{4}$|^\d{2}:\d{2}$/;
-    for (let row of jsonData) {
+    const pattern = /^\d{4}$|^\d{2}:\d{2}$/; // looks like a Start time
+    for (let row of theData) {
       const start = row[startCol];
-      if (typeof start === 'number' || pattern.test(start)) {
+      if (pattern.test(start)) {
         calendarsFound.add(row[calCol]) 
       }
     }
@@ -278,25 +279,34 @@ let modal;
 
 
 function cancelSelect() {
-  console.log('called cancel');
+  //console.log('called cancel');
 }
 
 
+// Export rows for selected calendars
+// 1. Popup modal with calendars to select
+// 2. Generate the iCalendar entries
+// 3. Open a window with a link for the export.
+//    This is a window rather than a modal to allow multiple iCalendar
+//    to be generated
+// TODO generate when no calendars chosen
 function exportSelect() {
   const calendarsToExport = new Set();
-  const checkedCalendars = document.querySelectorAll('input[name=calendar-checkbox]:checked');
-  checkedCalendars.forEach(function(cal) {
-    calendarsToExport.add(cal.value);
-  });
-  setCalendarsToExport(calendarsToExport);
-  modal.close();
+  if (columns.has('Calendar')) {
+    const checkedCalendars = document.querySelectorAll('input[name=calendar-checkbox]:checked');
+    checkedCalendars.forEach(function(cal) {
+      calendarsToExport.add(cal.value);
+    });
+    //setCalendarsToExport(calendarsToExport);
+    modal.close();
+  }
 
   // Generate iCal
-  const iCal = generateICal(jsonData);
+  const iCal = generateICal(theData, calendarsToExport);
+  console.log(iCal);
 
   //Open new window with iCal data
   openICalWindow(calendarsToExport, iCal);
-
 }
 
 
@@ -305,16 +315,22 @@ function exportSelect() {
 function exportCalendar() {
   // First, search the spreadsheet for calendars, if any
   allCalendars = calendarsFound = findCalendars();
-  selectCalendars(calendarsFound);
+  if (calendarsFound.size > 0) {
+    // If any found, ask which calendars to use
+    selectCalendars(calendarsFound);
+  }
+  else {
+    // else go straight to export all
+    exportSelect();
+  }
+ 
   console.log(calendarsFound);
 }
 
 
 // Popup window to select calendars to export
 function selectCalendars(calendarsFound) {
-  // New window to select calendars (if any) and iCalendar file
-  const numCalendarsFound = calendarsFound.size;
-  if (numCalendarsFound > 0) {
+  if (calendarsFound.size > 0) {
 
     modal = new SV.Modal('select-calendars-modal');
     modal.getModalElement().addEventListener('sv.modal.close', function (ev) {
@@ -332,6 +348,9 @@ function selectCalendars(calendarsFound) {
       `;
     });
     html += `
+      <p>If no calendars are selected, all will be exported.</p>
+    `;
+    html += `
         <button id="cancel-calendar-choice-button" onclick="cancelSelect()">Cancel</button>
         <button id="export-calendar-choice-button" onclick="exportSelect()">Export</button>
     `;
@@ -343,7 +362,7 @@ function selectCalendars(calendarsFound) {
 
 
 // Generate DTSTAMP
-function makeDTSTAMP() {
+function createDTSTAMP() {
   const now = new Date();
   const year = now.getUTCFullYear();
   const month = String(now.getUTCMonth() + 1).padStart(2, '0');
@@ -351,13 +370,15 @@ function makeDTSTAMP() {
   const hours = String(now.getUTCHours()).padStart(2, '0');
   const minutes = String(now.getUTCMinutes()).padStart(2, '0');
   const seconds = String(now.getUTCSeconds()).padStart(2, '0');
-  return '${year}${month}${day}${T}{hours}${minutes}${seconds}';
+  return `${year}${month}${day}${T}${hours}${minutes}${seconds}`;
 }
+
 
 // Parse a day in a format like 'Sunday 12th March'
 // Return [day number, month], e.g. [12, 'March']
 function parseDate(row) {
   const rowDate = row[columns.get('Date')];
+  console.log('Date', rowDate);
   // Define the regular expression for the delimiters (spaces and commas)
   const delimiterRE = /[,\s]+/;
   const yearRE = /^\d{4}$/;
@@ -365,28 +386,35 @@ function parseDate(row) {
                      .filter(it => it !== '')              // remove any empty elements
                      .map(it => it.toUpperCase())          // make all upper case
                      .filter(it => !it.endsWith('DAY'));   // remove any day names
+  //console.log('dayMonthYear', dayMonthYear);
   const years = dayMonthYear
-                .filter (it => yearRE.text(it));
+                .filter (it => yearRE.test(it));         // get any year
+  //console.log('years', years);
   const dayMonth = dayMonthYear
-                   .filter(it => !(/^\d{4}$/.text(it))); // remove any year
+                   .filter(it => !(yearRE.test(it)));   // remove any year
+  //console.log('dayMonth', dayMonth);
   const days = dayMonth
                .filter(it => /^\d+[A-Z]*$/.test(it))   // only day strings 
-               .map(it => it.replace(/[A-Z]*$/,''));    // remove any ordinal characters
+               .map(it => it.replace(/[A-Z]*$/,''));   // remove any ordinal characters
+  //console.log('days', days);
   const months = dayMonth
                  .filter(it => /^[A-Z]+$/.test(it)); 
-  let rv = (!days.length || !months.length) ?
-    null:  // something went wrong
+  //console.log('months',months);
+  let rv = (!days.length || !months.length) ?          // must have day and month numbers
+    null :  // something went wrong
     [days[0], months[0]];
-  if (rv && year.length) {
+  if (rv && years.length) {
     rv =  [days[0], months[0], years[0]];
   }
+  //console.log('rv', rv);
   return rv;
 }
 
+
 // Generate the iCalendar data
-// TODO
-function generateICal(data) {
-  const DTSTAMP = makeDTSTAMP();
+// TODO some fields may be 'number'
+function generateICal(data, calendarsToExport) {
+  const DTSTAMP = createDTSTAMP();
   const startCol = columns.get('Start');
   const startPattern = /^\d{4}$|^\d{2}:\d{2}$/;
 
@@ -396,15 +424,26 @@ function generateICal(data) {
   // Process the source file
   for (let lineNum in data) {
     line = data[lineNum];
+    if (!line || !line.length) {
+      continue;
+    }
   
     // Defend against regex DOS attacks, otherwise trailing spaces is polynomial
-    line = line.map(it => typeof it === 'string' ? it.trim() : it); 
+    line = line.map(it => it.trim()); 
 
     // Discard header and any other unlikely lines
     const start = line[startCol];
-    if ( (typeof start != 'number') || !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) {
+    if ( !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) {
       console.log(`Ignoring line ${lineNum}: ${line}`);
       continue;
+    }
+
+    // Skip rows for unwanted calendars
+    if (columns.has('Calendar')) {
+       const theCal = line[columns.get('Calendar')];
+       if (!calendarsToExport.has(theCal)) {
+         continue;
+       }
     }
 
     // Get the day and month
@@ -439,17 +478,19 @@ function generateICal(data) {
         continue; 
       }
   
+      // check that any year value matches the year chosen
       if ((dayMonthYear.length === 3) &&
           (dayMonthYear[2] != theYear)) {
         alert(`Year doesn't match on line ${lineNum}`);
       }
   
-      theNum = months.get(dayMonthYear[0].substr(0, 3));
-      theMonth = dayMonthYear[1];
+      theNum = dayMonthYear[0];
+      theMonth = months.get(dayMonthYear[1].substr(0, 3));
+      //console.log('theNum - theMonth', theNum, theMonth);
     }
 
     // Get the event
-    const theEvent = line[columns.get('Event')];
+    let theEvent = line[columns.get('Event')];
 
     // Get the start and end times
     // times before 1000 are sometimes recorded with only 3 digits
@@ -480,19 +521,23 @@ function generateICal(data) {
             theEndHour = +theEndHour + 1;
             theEndMin -= 60;
           }
-          theEndHour = theEndHour.padStart(2, '0');
+          theEndHour = String(theEndHour).padStart(2, '0');
+          theEndMin = String(theEndMin).padStart(2, '0');
       }
 
       else {
         // assume more than one race if event string includes 
         // more than one separate number, and allow an extra hour 
-        theEndHour = theHour + (/\d\D+\d/.test(theEvent) ? DURATION + 1 : DURATION);
+        theEndHour = +theHour + (/\d\D+\d/.test(theEvent) ? DURATION + 1 : DURATION);
         theEndMin = theMin;
+        //console.log('times', theHour, theMin, theEndHour);
         if (theEndHour > 24) {
           alert(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`);
           theEndHour = '23';
           theEndMin = '59';
         }
+        theEndHour = String(theEndHour).padStart(2, '0');
+        theEndMin = String(theEndMin).padStart(2, '0');
       }
       theHour = theHour.padStart(2, '0'); 
     }
@@ -519,10 +564,11 @@ function generateICal(data) {
     }
 
     // Get highwater time
-    const highwater = line[columns.get('HW')];
+    const highwater = columns.has('HW') ? line[columns.get('HW')] : '';
    
     // Print the record
-    text += printICAL(theNum, theMonth, theHour, theMin, theEndHour, theEndMin, theEvent, highwater);
+    //console.log(`Line ${lineNum}:`,theNum, theMonth, theHour, theMin, theEndHour, theEndMin, theEvent, highwater);
+    text += printICAL(DTSTAMP, theNum, theMonth, theHour, theMin, theEndHour, theEndMin, theEvent, highwater);
   }
 
   text += printEOCAL();
@@ -539,42 +585,43 @@ function generateICal(data) {
 // so they change... :-(
 function convUTC(year, month, day, hour) {
   const dt = new Date(year, month-1, day, hour);
-  return dt.getUTCHours().padStart(2, '0');
+  return String(dt.getUTCHours()).padStart(2, '0');
 }
 
 
 // iCalendar (and vCalendar) header
 // TODO nice to include X-WR-CALNAME: property
 function printCALhdr() {
-  return 
+  const hdr = 
 `BEGIN:VCALENDAR
 VERSION:${VERSION}
 PRODID:Richard Jones xl2cal.html generated
 CALSCALE:GREGORIAN
 `;
+  return hdr;
 }
 
 
 // Print iCalendar entry
-function printICAL (theNum, theMonth, theStart, theMin, 
+function printICAL (DTSTAMP, theNum, theMonth, theStart, theMin, 
                     theEnd, theEndMin, theEvent, theHighwater) {
   const hw = theHighwater === '' ? '' : `, HW=${theHighwater}`;
   const summary = theEvent + hw;
   // $summary =~ s/.{63}\K/\n /sg; # fold lines longer than 75 octets
   const day = theYear.padStart(4, '0') + theMonth.padStart(2, '0') + theNum.padStart(2, '0');
-  const start = convUTC(theYear, theMonth, theNum, theStart);
-  const end = convUTC(theYear, theMonth, theNum, theEnd);
+  const start = convUTC(theYear, theMonth, theNum, theStart) + theMin + '00';
+  const end = convUTC(theYear, theMonth, theNum, theEnd) + theEndMin + '00';
   let alarm = start - ADVANCE;
   if (alarm < 0) { 
     alert(`Alarm set for previous day: ${theEvent}`);
     alarm = "000000";
   } else { 
-    alarm = alarm.padStart(4, '0');
+    alarm = String(alarm).padStart(4, '0');
   }
-  start = start + theMin + '00';
-  end = end + theEndMin + '00';
-  const uid = '9e7de45c-51d4-43b4-8895-477b45926c3c'; //FIXME uuidv4();
-  return 
+  //const uid =  uuidv4();
+  //const uid = '9e7de45c-51d4-43b4-8895-477b45926c3c'; //FIXME 
+  const uid = crypto.randomUUID();
+  const entry = 
 `BEGIN:VEVENT
 CREATED:${DTSTAMP}${Z}
 UID:${uid}
@@ -583,15 +630,17 @@ DTSTART:${day}${T}${start}${Z}
 DTEND:${day}${T}${end}${Z}
 SUMMARY:WYC ${summary}
 END:VEVENT
-EOI
 `;
+  console.log(entry);
+  return(entry);
 }
 
 // Calendar (and vCalendar) trailer
 function printEOCAL() {
-  return 
+  const eoc = 
 `END:VCALENDAR
 `;
+  return eoc;
 }
 
 // Open a new window with a download link
@@ -604,7 +653,7 @@ function openICalWindow(calendarsToExport, iCal) {
   const heading = newWindow.document.createElement("h2");
   let title = 'iCalendar generated';
   let filename;
-  if (calendarsToExport) {
+  if (calendarsToExport.size > 0) {
     title += ' for ' + Array.from(calendarsToExport).join(', ');
     filename = Array.from(calendarsToExport).join('')+'.ics';
   } else {
@@ -627,6 +676,7 @@ function openICalWindow(calendarsToExport, iCal) {
   newWindow.document.write('</body></html>');
 }
 
+// Warn about bad record
 function bad(msg, lno) {
   alert(`BAD RECORD: ${msg} on line ${lno} so ignoring this line.`);
 }
