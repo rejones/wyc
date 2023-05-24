@@ -130,3 +130,15 @@ label, input[type="checkbox"] {
   display: inline-block;
   vertical-align:middle;
 }
+
+.banner-name {
+  display:inline-block;
+}
+.hamburger-menu {
+  float:right;
+  margin-right: 10px;
+  max-width: 5%;
+  max-height: auto;
+  vertical-align:top;
+  display:inline-block;
+}
