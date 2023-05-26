@@ -8,8 +8,8 @@
 <body>
   <header>
     <h1 class="banner-name" >xl2cal</h1>
-    <a href="instructions.html"><img class="hamburger-menu" src="hamburger.png"
-       alt="instructions"></a>
+    <!--<a href="instructions.html"><img class="info-menu" src="info.png"
+    alt="instructions"></a>-->
   </header>
   
   <div class="content">
@@ -18,27 +18,57 @@
     from a spreadsheet to an iCalendar that can be imported into Apple Calendar, Google Calendar, etc.
     </p>
 
-<h3>Creating a spreadsheet for your schedule</h3>
+<h3>1. Creating a spreadsheet for your schedule</h3>
 
-<h3>Loading your spreadsheet into xl2cal</h3>
+<h3>2. Loading your spreadsheet into xl2cal</h3>
 
-<h3>Selecting columns for export</h3>
+<h3>3. Selecting columns for export</h3>
 
 Use the column heading buttons to select the columns to be used.
 
-Mandatory columns
-The date column(s) of the event must be specified by EITHER a Day number column and a Month number column OR a Date column. If Days are specified, the Day column may contain either cardinal (e.g. 6) or ordinal (e.g. 6th) numbers.If Months are specified, the Month column may contain either cardinal numbers (e.g. 6), or month name or prefix (e.g. June or Jun).If a Date is specified, almost any format is acceptable.
-A Start column. Entries in the start column should usually be times using a 24-hour clock. Acceptable entries include 1400, 14:00 and 14.00. However, TBA, TBC, NA and N/A are also accepted.Lines without valid Start times (such as headers, blank lines) are ignored.
-An Event column, describing the event.
+<dl>
+<dt>Mandatory columns</dt>
+<dd>The date column(s) of the event must be specified by 
+  <ol>
+    <li>EITHER a <b>Day</b> number column <i>and</i> a <b>Month</b> number column<br>
+        OR a <b>Date</b> column.<br>
+        If Days are specified, the Day column may contain either cardinal (e.g. 6) or
+        ordinal (e.g. 6th) numbers.<br>
+        If Months are specified, the Month column may contain either cardinal numbers
+        (e.g. 6), or month name or prefix (e.g. June or Jun).<br>
+        If a Date is specified, almost any format is acceptable.</li>
+    <li>A <b>Start</b> column. Entries in the start column should usually be times using a 24-hour clock. 
+        Acceptable entries include 1400, 14:00 and 14.00. However, TBA, TBC, NA
+        and N/A are also accepted.<br>
+        Lines without valid Start times (such as headers, blank lines) are
+        ignored.</li>
+    <li>An <b>Event</b> column, describing the event.</li>
+  </ol>
+</dd>
+<dt>Optional columns</dt>
+<dd>
+  <ul>
+    <li>A high-water (<b>HW</b>) column. 
+        An entry in this column (e.g. 1500), if any, will be appended to the
+        entry in the Event column (e.g. Race 1) to give e.g. (Race 1, HW=1500).
+        Actually, this entry can be anything - it does not need to be high-water.</li>
+    <li>An <b>End</b> or <b>Duration</b> column. If neither is provided, events are given a
+        default duration.</li>
+    <li>A <b>Calendar</b> column.
+        This is intended to allow separate calendars to be generated from a
+        single spreadsheet,
+        by tagging event rows in the spreadsheet with the name of the
+        appropriate calendar. 
+        Before exporting an iCalendar file, the tool will ask which calendars it
+        should generate entries for.
+        If no Calendar column is specified, or if no calendars are selected for
+        export, the iCalendar file will contain entries for all events</li>
+  </ul>
+</dd>
 
-Optional columns
-A high-water (HW) column. An entry in this column (e.g. 1500), if any, will be appended to the entry in the Event column (e.g. Race 1) to give e.g. (Race 1, HW=1500).
-An End or Duration column. If neither is provided, events are given a default duration.
-A Calendar column. This is intended to allow separate calendars to be generated from a single spreadsheet. If no Calendar column is specified, all events are generated. Otherwise, you must also provide a list of the event types to include in the exported calendar. 
+<h3>4. Selecting the calendars to export</h3>
 
-<h3>Selecting the calendars to export</h3>
-
-<h3>Download the schedule as an iCalendar file</h3>
+<h3>5. Download the schedule as an iCalendar file</h3>
     
   </div>
 
