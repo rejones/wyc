@@ -3,6 +3,7 @@
 
 // Month prefixes to numbers
 // Month numbers are strings to help with padding
+const MONTHS_PREFIX_LEN = 3;
 const months = new Map([
   ['JAN', '1'],
   ['FEB', '2'],
@@ -225,6 +226,9 @@ function renderTable(data) {
         }
       });
 
+
+      // FIXME do a sanity check on this column
+
       //Enable export button once required columns are chosen
       const exportBtn = document.getElementById('export-button');
       exportBtn.disabled = !( 
@@ -410,6 +414,8 @@ function parseDate(row) {
   return rv;
 }
 
+// Sanity checks on columns
+
 
 // Generate the iCalendar data
 // TODO some fields may be 'number'
@@ -450,9 +456,10 @@ function generateICal(data, calendarsToExport) {
     let theNum, theMonth;
 
     if (columns.get('Day') && columns.get('Month')) {
-      const lineMonth = line.get('Month');
+      const lineMonth = line[columns.get('Month')];
+      // allow either month number or string
       theMonth = (/^\d\d?$/.test(lineMonth)) ?
-                  line.get('Month') :
+                  line[columns.get('Month')] :
                   0 + months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
       if (theMonth < 1 || theMonth > 12) {
         bad(`Invalid month ${month} ${lineMonth} ${line[columns.get('Month')]}`, lineNum);
@@ -460,13 +467,17 @@ function generateICal(data, calendarsToExport) {
       }
 
       // get the day number
-      theNum = line[columns.get('Day')];
-      if (!(/^\d\d?$/.test(theNum))) {
+      //theNum = line[columns.get('Day')];
+      let matchDay;
+      if (matchDay = line[columns.get('Day')].match(/^(\d\d?)(st|nd|rd|th)?/i)) {
+        theNum = matchDay[1];
+        if ((theNum < 1) || (theNum > new Date(theYear, theMonth, 0).getDate())) {
+          bad (`${theNum} is out of range for a day in month ${theMonth}`, lineNum); 
+          continue; 
+        }
+      } else {
+        //if (!(/^\d\d?$/.test(theNum))) {
         bad(`Cannot understand day number \"${theNum}\"`, lineNum); 
-        continue; 
-      }
-      if ((theNum < 1) || (theNum > new Date(year, theMonth, 0).getDate())) {
-        bad (`${theNum} is out of range for a day in month ${theMonth}`, lineNum); 
         continue; 
       }
 
@@ -677,6 +688,12 @@ function openICalWindow(calendarsToExport, iCal) {
 }
 
 // Warn about bad record
+//FIXME Should also allow to halt.
 function bad(msg, lno) {
-  alert(`BAD RECORD: ${msg} on line ${lno} so ignoring this line.`);
+  if (confirm(`BAD RECORD: ${msg} on line ${lno} so ignoring this line.`)) {
+    return;
+  } else {
+    alert("You've have cancelled the run");
+    throw new Error('Run aborted');
+  }
 }
