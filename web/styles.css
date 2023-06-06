@@ -44,6 +44,7 @@ h1 {
 border: 2px dashed #ccc;
   padding: 20px;
   text-align: center;
+  display: inline-block;
 }
 
 #drop-zone.dragover {
@@ -69,22 +70,23 @@ border: 2px dashed #ccc;
   margin-bottom: 20px;
 }
 
+select {
+  width: 100%;
+  padding: 10px;
+  font-size: inherit;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
 .select-box {
   flex: 0 1 auto; /* Retain natural width */
+  display: inline-block;
 }
 
 /* Additional styles for select box layout */
 label {
   display: block;
-  margin-bottom: 5px;
-}
-
-select {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  margin-top: 5px;
 }
 
 /* The spreadsheet */
@@ -164,4 +166,24 @@ label, input[type="checkbox"] {
   text-decoration: none;
   border: 3px solid white;
   text-align: center;
+}
+
+/* Styling the documentation */
+.instr-box {
+  border: 1px solid black;
+  white-space: nowrap;
+  padding: 2px;
+}
+
+.instr-landing {
+  border: 1px dashed black;
+  white-space: nowrap;
+  padding: 2px;
+}
+
+.instr-button {
+  border: 1px solid black;
+  white-space: nowrap;
+  background-color: LightSkyBlue;
+  padding: 2px;
 }

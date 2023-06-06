@@ -43,18 +43,14 @@ const T = 'T';
 const Z = 'Z';      // 'Z' means UTC rather than local time
 
 let theYear = new Date().getFullYear();  // The year to generate the calendar for
+let thePrefix = ''; // The prefix for all event labels
 
 //Calendars to use
 let allCalendars;
-//let calendarsToExport = new Set();
-//
-//function setCalendarsToExport(cals) {
-//  //console.log('calendarsToExport', cals);
-//  calendarsToExport = cals;
-//}
 
 // The spreadsheet data
 const theData = [];
+
 
 // Drag and drop handlers
 function dropHandler(ev) {
@@ -62,27 +58,21 @@ function dropHandler(ev) {
 
   // Prevent default behavior (Prevent file from being opened)
   ev.preventDefault();
-
-  if (ev.dataTransfer.items) {
-    // Use DataTransferItemList interface to access the file(s)
-    const item = ev.dataTransfer.items[0];
-    // If dropped items aren't files, reject them
-    if (item.kind === "file") {
-      const file = item.getAsFile();
-      //console.log('DataTransferItemList', `… file.name = ${file.name}`);
-      handleFile(file);
-    }
-  } else {
-    // Use DataTransfer interface to access the file(s)
-    const file = ev.dataTransfer.files[0];
-    //console.log('DataTransfer', `… file.name = ${file.name}`);
+  const item = ev.dataTransfer.items ?
+    ev.dataTransfer.items[0] :
+    ev.dataTransfer.files[0];
+  if (item.kind === "file") {
+    const file = item.getAsFile();
+    //console.log('DataTransferItemList/DataTransfer', `… file.name = ${file.name}`);
+    // set file.name in the fileChooser
+    document.getElementById('file-chooser').files = ev.dataTransfer.files;
     handleFile(file);
   }
 }
 
 function dragOverHandler(ev) {
   //console.log("File(s) in drop zone");
-  // Prevent default behavior (Prevent file from being opened)
+  // Prevent default behaviour (prevent file from being opened)
   ev.preventDefault();
 }
 
@@ -111,6 +101,12 @@ window.addEventListener('DOMContentLoaded', () => {
   // Access the selected year from the dropdown
   theYear = yearDropdown.value;
   //console.log('Selected year:', theYear);
+
+  // Optional label prefix
+  const prefixBox = document.getElementById('event-prefix');
+  prefixBox.addEventListener('change', () => {
+    thePrefix = prefixBox.value + ' ';
+  });
 });
 
 
@@ -226,9 +222,6 @@ function renderTable(data) {
         }
       });
 
-
-      // FIXME do a sanity check on this column
-
       //Enable export button once required columns are chosen
       const exportBtn = document.getElementById('export-button');
       exportBtn.disabled = !( 
@@ -327,7 +320,6 @@ function exportCalendar() {
     // else go straight to export all
     exportSelect();
   }
- 
   console.log(calendarsFound);
 }
 
@@ -414,11 +406,8 @@ function parseDate(row) {
   return rv;
 }
 
-// Sanity checks on columns
-
 
 // Generate the iCalendar data
-// TODO some fields may be 'number'
 function generateICal(data, calendarsToExport) {
   const DTSTAMP = createDTSTAMP();
   const startCol = columns.get('Start');
@@ -629,8 +618,6 @@ function printICAL (DTSTAMP, theNum, theMonth, theStart, theMin,
   } else { 
     alarm = String(alarm).padStart(4, '0');
   }
-  //const uid =  uuidv4();
-  //const uid = '9e7de45c-51d4-43b4-8895-477b45926c3c'; //FIXME 
   const uid = crypto.randomUUID();
   const entry = 
 `BEGIN:VEVENT
@@ -639,12 +626,13 @@ UID:${uid}
 DTSTAMP:${DTSTAMP}${Z}
 DTSTART:${day}${T}${start}${Z}
 DTEND:${day}${T}${end}${Z}
-SUMMARY:WYC ${summary}
+SUMMARY:${thePrefix}${summary}
 END:VEVENT
 `;
   console.log(entry);
   return(entry);
 }
+
 
 // Calendar (and vCalendar) trailer
 function printEOCAL() {
@@ -653,6 +641,7 @@ function printEOCAL() {
 `;
   return eoc;
 }
+
 
 // Open a new window with a download link
 // calendarsToExport: the names of the calendars chosen for export
@@ -688,7 +677,6 @@ function openICalWindow(calendarsToExport, iCal) {
 }
 
 // Warn about bad record
-//FIXME Should also allow to halt.
 function bad(msg, lno) {
   if (confirm(`BAD RECORD: ${msg} on line ${lno} so ignoring this line.`)) {
     return;
@@ -697,3 +685,17 @@ function bad(msg, lno) {
     throw new Error('Run aborted');
   }
 }
+
+/*
+TODO Possible improvements.
+
+1. Sanity check on columns chosen.
+   When the user selects a column, sniff entries in this column to see if most
+   of them look plausible. Use 'most' not 'all' to allow for lines to be ignored
+   or typos in entries.
+   Checks would include
+   . isDay() - cardinal or ordinal number
+   . isMonth() - cardinal number, or month name or abbreviation
+   . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
+
+*/
