@@ -104,8 +104,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Optional label prefix
   const prefixBox = document.getElementById('event-prefix');
+  thePrefix = prefixBox.value;
   prefixBox.addEventListener('change', () => {
-    thePrefix = prefixBox.value + ' ';
+    thePrefix = prefixBox.value;
   });
 });
 
@@ -286,7 +287,6 @@ function cancelSelect() {
 // 3. Open a window with a link for the export.
 //    This is a window rather than a modal to allow multiple iCalendar
 //    to be generated
-// TODO generate when no calendars chosen
 function exportSelect() {
   const calendarsToExport = new Set();
   if (columns.has('Calendar')) {
@@ -370,11 +370,26 @@ function createDTSTAMP() {
 }
 
 
-// Parse a day in a format like 'Sunday 12th March'
+// Parse a day in a format like 'Sunday 12th March' or '12/3/'
 // Return [day number, month], e.g. [12, 'March']
 function parseDate(row) {
   const rowDate = row[columns.get('Date')];
   console.log('Date', rowDate);
+
+  // First, try dd/mm/yyyy etc formats
+  let matchDate;
+  if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)\/(\d{2})$/)) {
+    return [ matchDate[1], matchDate[2], "20"+matchDate[3] ];
+  }
+  else if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)\/(\d{4})$/)) {
+    return [ matchDate[1], matchDate[2], matchDate[3] ];
+  }
+  else if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)$/)) {
+    return [ matchDate[1], matchDate[2] ];
+  }
+
+  //Next, try numbers and words
+
   // Define the regular expression for the delimiters (spaces and commas)
   const delimiterRE = /[,\s]+/;
   const yearRE = /^\d{4}$/;
@@ -415,6 +430,9 @@ function generateICal(data, calendarsToExport) {
 
   // Print header for calendars
   let text = printCALhdr();
+  if (thePrefix.length) {
+    thePrefix += ' ';
+  }
 
   // Process the source file
   for (let lineNum in data) {
@@ -485,7 +503,9 @@ function generateICal(data, calendarsToExport) {
       }
   
       theNum = dayMonthYear[0];
-      theMonth = months.get(dayMonthYear[1].substr(0, 3));
+      theMonth = dayMonthYear[1].match(/^\d+$/) ?
+        dayMonthYear[1] :
+        months.get(dayMonthYear[1].substr(0, 3));
       //console.log('theNum - theMonth', theNum, theMonth);
     }
 
@@ -697,5 +717,5 @@ TODO Possible improvements.
    . isDay() - cardinal or ordinal number
    . isMonth() - cardinal number, or month name or abbreviation
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
-
+   Probably, don't bother as we now let user bail out early.
 */

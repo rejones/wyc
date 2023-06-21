@@ -46,7 +46,7 @@
   <ul>
     <li>dragging the spreadsheet file onto the landing site labelled 
     <span class="instr-landing">Drag and drop a spreadsheet file here</span>, or</li>
-    <li>using the <span class="instr-box">Choose file"</span> button.</li>
+    <li>using the <span class="instr-box">Choose file</span> button.</li>
   </ul>
 </p>
 <p>
@@ -116,12 +116,34 @@
   If you have selected one of the columns of your spreadsheet as a "Calendars"
   column, 
   then a pop-up window will appear, 
-  asking you to choose which calendars to export.
+  asking you to choose which calendar(s) to export.
+  <em>xl2cal</em> will generate entries for rows with "Calendars" cells matching
+  the ones you have chosen.
   If you do not choose any, 
   or if no "Calendar" column was selected,
   the iCalendar file generated will contain entries for all events.
   Click the <span class="instr-button">Export</span> button to complete
-  generating your calendar
+  generating your calendar.
+</p>
+<h4>Errors</h4>
+<p>
+  Take care that dates and times are properly entered in your spreadsheet.
+  In particular, if using the Date column, ensure that there are no missing
+  spaces between words.
+</p>
+<p>
+  <em>xl2cal</em> will check each row in your spreadsheet.
+  Any row without a valid Start time will be ignored
+  (this allows you to have blank lines or other non-event rows in your
+  spreadsheet).
+  You have two choices if a warning pops up for a row with invalid data.
+  <ul>
+    <li>To continue generating your iCalendar without this row,
+        click <span class="instr-box">OK</span>.</li>
+    <li>to cancel generating your iCalendar,
+        click <span class="instr-box">Cancel</span>.</li>
+  </ul>
+</p>
 
 <h3>5. Download the schedule as an iCalendar file</h3>
 <p>
