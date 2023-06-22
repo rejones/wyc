@@ -1,29 +1,26 @@
 /* styles.css */
+
+/* TODO
+1. Probably shouldn't use px
+*/
+
 body {
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
 }
 
+/* HEADER ITEMS */
+
 header {
   background-image: url("banner.png");
   background-size: cover;
   background-position: bottom;
   color: #fff;
-  padding: 20px;
+  padding: 2em;
 }
 
-.content {
-  padding: 20px;
-}
-
-/*
-p {
-  font-size: 18px;
-  line-height: 1.5;
-}
-*/
-
+/* Used for banner */
 h1 {
   margin: 0;
   text-shadow:
@@ -37,68 +34,106 @@ h1 {
     -1px  0   0 #000;
 }
 
+.banner-name {
+  display:inline-block;
+}
 
-/* Choosing the spreadsheet */
+.info-menu {
+  float:right;
+  margin-right: 1rem;
+  max-width: 5%;
+  max-height: auto;
+  vertical-align:center;
+  display:inline-block;
+  border-radius: 50%;
+  width: 1em;
+  height: 1em;
+  padding: 0.3em;
+  background: transparent;
+  font-size: 1.2rem;
+  color: white;
+  text-decoration: none;
+  border: 3px solid white;
+  text-align: center;
+}
 
+.content {
+  padding: 1.5em;
+}
+
+/*
+p {
+  font-size: 18px;
+  line-height: 1.5;
+}
+*/
+
+/* CHOOSING THE SPREADSHEET */
+
+/* The text of the drop-zone */
 #drop-zone {
-border: 2px dashed #ccc;
-  padding: 20px;
+  border: 2px dashed #ccc;
+  padding: 2em 6em;
   text-align: center;
   display: inline-block;
+  flex: 1 0 auto;
 }
 
 #drop-zone.dragover {
   background-color: #f2f2f2;
 }
 
-.content {
-  padding: 20px;
-}
-
+/* Contains the landing-site/drop-zone, the year select-box 
+ * (year-dropdown and event-prefix) */
 .sheet-chooser-group {
   display: flex;
   flex-wrap: wrap;
-  margin-bottom: 20px;
   align-items: center; /* Vertically center the items */
-  margin-bottom: 20px; /* Add space below the sheet-chooser-group */  
+  margin-bottom: 2rem; /* Add space below the sheet-chooser-group */  
 }
 
 .landing-site {
-  flex: 1 0 auto; /* Allow the div to expand */
-  margin-top: 20px;
-  margin-right: 10px; /* Add space between the divs */
-  margin-bottom: 20px;
+  flex: 1 0 inherit; /* Allow the div to expand - FIXME */
+  margin: 2em 1em;  /* Add space between the divs */
 }
 
 select {
   width: 100%;
-  padding: 10px;
+  padding: 1em;
   font-size: inherit;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
 
 .select-box {
-  flex: 0 1 auto; /* Retain natural width */
+  flex: none;
+  width: 8em;
+  margin-right: 2rem;
   display: inline-block;
 }
 
 /* Additional styles for select box layout */
 label {
   display: block;
-  margin-top: 5px;
+  margin-top: 0.5em;
+}
+
+/* Select year options and event prefix */
+#year-dropdown, #event-prefix {
+  color: blue;
 }
 
 /* The spreadsheet */
 .sheet-group {
   /* Add space between sheet-chooser-group and sheet-group */
-  margin-top: 20px;
+  margin-top: 1rem;
 }
 
+/* Display the spreadsheet's first few rows */
 .table-container {
   overflow: auto;
   max-width: 100%;
-  max-height: 150px; /* Adjust the height as needed */
+  max-height: 16em; /* Adjust the height as needed */
 }
 
 .table-wrapper {
@@ -106,14 +141,14 @@ label {
   vertical-align: top;
 }
 
-/* export button */
+/* export buttons */
 button {
   font-size: 1rem;
   float: right;
-  margin-right: 10px;
+  margin-right: 2rem;
   color: black;
   background-color: LightSkyBlue;
-  padding: 7px;
+  padding: 0.5em;
   border: 2px solid black;
   border-radius: 4px;
   cursor: pointer;
@@ -123,67 +158,53 @@ button[disabled]{
   color: white;
   background-color: grey;
 }
+
+/* CALENDAR SELECTION AND DOWNLOAD */
+
+/* Choose calendars to export */
 #cancel-calendar-choice-button {
   float:left;
-  margin-left: 10px;
+  margin-left: 2rem;
   background-color: transparent;
 }
 
+/* Button to download calendar */
 #download-link {
   background-color: LightSkyBlue;
-  padding: 7px;
+  padding: 0.5em;
   border: 2px solid black;
   border-radius: 4px;
-  margin-left: 10px;
+  margin-left: 1rem;
   color: black;
   text-decoration: none;
 }
 
+/* Checkboxes to select calendars for export */
 label, input[type="checkbox"] {
-  margin-left: 10px;
+  margin-left: 1rem;
   display: inline-block;
   vertical-align:middle;
 }
 
-.banner-name {
-  display:inline-block;
-}
-.info-menu {
-  float:right;
-  margin-right: 10px;
-  max-width: 5%;
-  max-height: auto;
-  vertical-align:center;
-  display:inline-block;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  padding: 6px;
-  padding-bottom: 8px;
-  background: transparent;
-  font-size: 1.2rem;
-  color: white;
-  text-decoration: none;
-  border: 3px solid white;
-  text-align: center;
-}
 
-/* Styling the documentation */
+/* STYLING THE DOCUMENTATION */
+
+/* Boxes around text */
 .instr-box {
   border: 1px solid black;
   white-space: nowrap;
-  padding: 2px;
+  padding: 0.1em 0.25em;
 }
 
 .instr-landing {
   border: 1px dashed black;
   white-space: nowrap;
-  padding: 2px;
+  padding: 0.1em 0.25em;
 }
 
 .instr-button {
   border: 1px solid black;
   white-space: nowrap;
   background-color: LightSkyBlue;
-  padding: 2px;
+  padding: 0.1em 0.25em;
 }

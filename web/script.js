@@ -278,6 +278,7 @@ let modal;
 
 function cancelSelect() {
   //console.log('called cancel');
+  modal.close();
 }
 
 
