@@ -61,6 +61,10 @@ h1 {
   padding: 1.5em;
 }
 
+h2 {
+  margin-top: 2rem;
+}
+
 /*
 p {
   font-size: 18px;
@@ -89,7 +93,7 @@ p {
   display: flex;
   flex-wrap: wrap;
   align-items: center; /* Vertically center the items */
-  margin-bottom: 2rem; /* Add space below the sheet-chooser-group */  
+  /*margin-bottom: 2rem; /* Add space below the sheet-chooser-group */  
 }
 
 .landing-site {
@@ -121,12 +125,22 @@ label {
 /* Select year options and event prefix */
 #year-dropdown, #event-prefix {
   color: blue;
+  font-size: inherit;
 }
 
 /* The spreadsheet */
 .sheet-group {
   /* Add space between sheet-chooser-group and sheet-group */
   margin-top: 1rem;
+}
+
+.sheet-name-number {
+  display: inline-block;
+}
+
+#the-sheet {
+  color: blue;
+  font-size: inherit;
 }
 
 /* Display the spreadsheet's first few rows */

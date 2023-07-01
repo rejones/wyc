@@ -42,6 +42,7 @@ const NAend_hour = '17';
 const T = 'T';
 const Z = 'Z';      // 'Z' means UTC rather than local time
 
+let theSheet = 0; // The sheet to read
 let theYear = new Date().getFullYear();  // The year to generate the calendar for
 let thePrefix = ''; // The prefix for all event labels
 
@@ -98,6 +99,20 @@ window.addEventListener('DOMContentLoaded', () => {
     yearDropdown.appendChild(option);
   }
   
+    // The sheet to read
+  const sheetBox = document.getElementById('the-sheet');
+  //theSheet = sheetBox.value;
+  sheetBox.addEventListener('change', () => {
+    if (!sheetBox.value.length) {
+      theSheet = 0;
+    } else if (isNaN(sheetBox.value)) {
+      theSheet = sheetBox.value;
+    } else {
+      theSheet = +sheetBox.value;
+    }
+    //console.log('theSheet:', theSheet);
+  });
+
   // Access the selected year from the dropdown
   theYear = yearDropdown.value;
   //console.log('Selected year:', theYear);
@@ -123,7 +138,7 @@ function handleFile(file) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
+    const workbook = XLSX.read(data, { type: 'array', sheets: theSheet });
 
     // Assuming the first sheet in the workbook
     const sheetName = workbook.SheetNames[0];
@@ -708,7 +723,7 @@ function bad(msg, lno) {
 }
 
 /*
-TODO Possible improvements.
+TODO Bugs and ossible improvements.
 
 1. Sanity check on columns chosen.
    When the user selects a column, sniff entries in this column to see if most
@@ -719,4 +734,6 @@ TODO Possible improvements.
    . isMonth() - cardinal number, or month name or abbreviation
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
    Probably, don't bother as we now let user bail out early.
+2. TODO Improve placement of select-box components.
+3. FIXME Dropping spreadsheet again leads to an extra Export button!
 */
