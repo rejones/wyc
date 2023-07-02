@@ -42,15 +42,15 @@ const NAend_hour = '17';
 const T = 'T';
 const Z = 'Z';      // 'Z' means UTC rather than local time
 
-let theSheet = 0; // The sheet to read
+// Spreadsheet data
+let theSheet = 0;                        // The sheet to read
 let theYear = new Date().getFullYear();  // The year to generate the calendar for
-let thePrefix = ''; // The prefix for all event labels
-
-//Calendars to use
-let allCalendars;
-
-// The spreadsheet data
+let thePrefix = '';                      // The prefix for all event labels
 const theData = [];
+let allCalendars;                                               // Calendars to use
+
+// Export button for spreadsheet should only be created once
+let hasExportBtn = false;
 
 
 // Drag and drop handlers
@@ -101,15 +101,10 @@ window.addEventListener('DOMContentLoaded', () => {
   
     // The sheet to read
   const sheetBox = document.getElementById('the-sheet');
-  //theSheet = sheetBox.value;
-  sheetBox.addEventListener('change', () => {
-    if (!sheetBox.value.length) {
-      theSheet = 0;
-    } else if (isNaN(sheetBox.value)) {
-      theSheet = sheetBox.value;
-    } else {
-      theSheet = +sheetBox.value;
-    }
+  console.log('initial sheetBox.value', sheetBox.value);
+  theSheet = sheetBox.value;
+  sheetBox.addEventListener('input', () => {
+    theSheet = sheetBox.value;
     //console.log('theSheet:', theSheet);
   });
 
@@ -120,7 +115,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Optional label prefix
   const prefixBox = document.getElementById('event-prefix');
   thePrefix = prefixBox.value;
-  prefixBox.addEventListener('change', () => {
+  prefixBox.addEventListener('input', () => {
     thePrefix = prefixBox.value;
   });
 });
@@ -138,11 +133,32 @@ function handleFile(file) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array', sheets: theSheet });
+    const workbook = XLSX.read(data, { type: 'array' });
 
-    // Assuming the first sheet in the workbook
-    const sheetName = workbook.SheetNames[0];
+    //console.log('theSheet', theSheet);
+    //console.log(workbook.SheetNames);
+    // theSheet must be either a number or a string
+    let sheetName;
+    if (isNaN(theSheet)) { // it's a string
+      if (workbook.SheetNames.includes(theSheet)) {
+        sheetName = theSheet;
+      } else {
+        alert(`The spreadsheet doesn't have a sheet '${theSheet}'`);
+        return;
+      } 
+      //console.log('theSheet isNan', theSheet);
+    } else {  // it's a number
+      if ( (0 <= +theSheet) &&
+           (workbook.SheetNames.length > +theSheet) ) {
+        sheetName = workbook.SheetNames[+theSheet];
+      } else {
+        alert(`Sheet number '${theSheet}' is out of range`);
+        return;
+      }
+    }
+    console.log('sheetName', sheetName);
     const sheet = workbook.Sheets[sheetName];
+    //console.log(sheet);
     jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
     // Add title and instructions here
@@ -177,6 +193,7 @@ function renderTable(data) {
   }
   
   // Process the data, also saving it as strings
+  theData.length = 0; // clear in case user has added the spreadsheet more than once
   for (let row of data) {
     html += '<tr>';
     newRow = [];
@@ -248,13 +265,16 @@ function renderTable(data) {
     });
   });
 
-  // Create export button
-  const exportBtn = document.createElement('button');
-  exportBtn.id = 'export-button';
-  exportBtn.innerHTML = 'Export';
-  exportBtn.disabled = true;
-  exportBtn.addEventListener('click', exportCalendar);
-  document.body.appendChild(exportBtn);
+  // Create export button unless already present
+  if (!hasExportBtn) {
+    const exportBtn = document.createElement('button');
+    exportBtn.id = 'export-button';
+    exportBtn.innerHTML = 'Export';
+    exportBtn.disabled = true;
+    exportBtn.addEventListener('click', exportCalendar);
+    document.body.appendChild(exportBtn);
+    hasExportBtn = true;
+  }
 }
 
 
@@ -735,5 +755,5 @@ TODO Bugs and ossible improvements.
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
    Probably, don't bother as we now let user bail out early.
 2. TODO Improve placement of select-box components.
-3. FIXME Dropping spreadsheet again leads to an extra Export button!
+3. TODO Don't require user to hit return on input boxes
 */
