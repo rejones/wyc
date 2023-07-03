@@ -1,9 +1,16 @@
 // script.js
-// Convert WYC racing schedule into .ics format that can be loaded into a calendar.
 
-// Month prefixes to numbers
-// Month numbers are strings to help with padding
-const MONTHS_PREFIX_LEN = 3;
+/**
+ * Convert WYC racing schedule into .ics format that can be loaded into a calendar.
+ * @author Richard Jones
+ * @copyright Richard Jones, 2023
+ * https://github.com/rejones/wyc
+ */
+
+/** 
+ *Month prefixes to numbers
+ * Month numbers are strings to help with padding
+ */
 const months = new Map([
   ['JAN', '1'],
   ['FEB', '2'],
@@ -18,9 +25,12 @@ const months = new Map([
   ['NOV', '11'],
   ['DEC', '12']
 ]);
+const MONTHS_PREFIX_LEN = 3;
 
-// Hash of column names to numbers.
-// Invariant: mappings are unique, i.e. no two keys may have the same value
+/**
+ * Hash of column names to numbers.
+ *  Invariant: mappings are unique, i.e. no two keys may have the same value
+ */
 const columns = new Map();
 const columnValues = ['Day', 'Month', 'Date', 'HW', 'Start', 'End', 'Duration', 'Event', 'Calendar'];
 
@@ -35,7 +45,7 @@ const ADVANCE = 2;     // 2 hours warning
 const TBAhour = '09';             // so set the period to be 9.00 - 17.00
 const TBAend_hour = '17';
 const TBAstring = ' (times TBC)'; // string to add to TBA events
-// Not Applicable time
+// Not Applicable times
 const NAhour = '09';              // so set the period to be 9.00 - 17.00
 const NAend_hour = '17';
 
@@ -49,15 +59,16 @@ let thePrefix = '';                      // The prefix for all event labels
 const theData = [];
 let allCalendars;                                               // Calendars to use
 
-// Export button for spreadsheet should only be created once
+/** Export button for spreadsheet should only be created once */
 let hasExportBtn = false;
 
 
-// Drag and drop handlers
+/**
+ * Handle file dropped on landing site
+ * @param {Event} ev - The event
+ */
 function dropHandler(ev) {
-  //console.log("File(s) dropped");
-
-  // Prevent default behavior (Prevent file from being opened)
+  // Prevent default behaviour (prevent file from being opened)
   ev.preventDefault();
   const item = ev.dataTransfer.items ?
     ev.dataTransfer.items[0] :
@@ -71,14 +82,23 @@ function dropHandler(ev) {
   }
 }
 
+/**
+ * Handle file dragged onto landing site
+ * @param {Event} ev - The event
+ */
 function dragOverHandler(ev) {
-  //console.log("File(s) in drop zone");
   // Prevent default behaviour (prevent file from being opened)
   ev.preventDefault();
 }
 
 
-// Choose the spreadsheet
+/** 
+ * Add listener on events to 
+ * (1) choose the spreadsheet
+ * (2) generate a dropdown list of years, centred on current year
+ * (3) get the name or number of the sheet to use
+ * (4) get a prefix to use for events
+ */
 window.addEventListener('DOMContentLoaded', () => {
   const fileChooser = document.getElementById('file-chooser');
   const yearDropdown = document.getElementById('year-dropdown');
@@ -98,6 +118,8 @@ window.addEventListener('DOMContentLoaded', () => {
     option.selected = year == currentYear;
     yearDropdown.appendChild(option);
   }
+  // Access the selected year from the dropdown
+  theYear = yearDropdown.value;
   
     // The sheet to read
   const sheetBox = document.getElementById('the-sheet');
@@ -108,10 +130,6 @@ window.addEventListener('DOMContentLoaded', () => {
     //console.log('theSheet:', theSheet);
   });
 
-  // Access the selected year from the dropdown
-  theYear = yearDropdown.value;
-  //console.log('Selected year:', theYear);
-
   // Optional label prefix
   const prefixBox = document.getElementById('event-prefix');
   thePrefix = prefixBox.value;
@@ -121,12 +139,20 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// Read the spreadsheet file
+/**
+ * Read the spreadsheet file
+ * @param {Event} event - The event
+ */
 function handleFileEvent(event) {
   const file = event.target.files[0];
   handleFile(file);
 }
 
+
+/**
+ * Read the spreadsheet and render it in the document
+ * @param {File} file - The file loaded
+ */
 function handleFile(file) {
   console.log(file.name);
 
@@ -135,8 +161,6 @@ function handleFile(file) {
     const data = new Uint8Array(e.target.result);
     const workbook = XLSX.read(data, { type: 'array' });
 
-    //console.log('theSheet', theSheet);
-    //console.log(workbook.SheetNames);
     // theSheet must be either a number or a string
     let sheetName;
     if (isNaN(theSheet)) { // it's a string
@@ -146,7 +170,6 @@ function handleFile(file) {
         alert(`The spreadsheet doesn't have a sheet '${theSheet}'`);
         return;
       } 
-      //console.log('theSheet isNan', theSheet);
     } else {  // it's a number
       if ( (0 <= +theSheet) &&
            (workbook.SheetNames.length > +theSheet) ) {
@@ -156,9 +179,7 @@ function handleFile(file) {
         return;
       }
     }
-    console.log('sheetName', sheetName);
     const sheet = workbook.Sheets[sheetName];
-    //console.log(sheet);
     jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
     // Add title and instructions here
@@ -175,7 +196,10 @@ function handleFile(file) {
 }
 
 
-// Render the spreadsheet on screen
+/**
+ * Parse and render the spreadsheet on screen as a table
+ * @param {Array} data - The sheet to parse and display
+ */
 function renderTable(data) {
   const sheetTable = document.getElementById('sheet-table');
   const numColumns = data.length > 0 ? data[0].length : 0;
@@ -278,7 +302,12 @@ function renderTable(data) {
 }
 
 
-// Find the key in a hashmap 'map' with value 'value'
+/**
+ * Find the (first) key with a specified value in a hashmap 
+ * @param map 
+ * @param value
+ * @return The key or null if value is not present
+ */
 function getKeyByValue(map, value) {
   for (let key of map.keys()) {
     if (map.get(key) === value) {
@@ -288,8 +317,11 @@ function getKeyByValue(map, value) {
   return null;
 }
 
-// Search the spreadsheet for calendars, if any
-// Want only Calendar entries for event rows (not headers, etc)
+/**
+ * Search the spreadsheet for calendars, if any
+ * Want only Calendar entries for event rows (not headers, etc)
+ @ return {Set} The set of calendar names (possibly empty)
+ */
 function findCalendars() {
   const calendarsFound = new Set();
   if (columns.get('Calendar')) {
@@ -307,22 +339,25 @@ function findCalendars() {
 }
 
 
-// Modal dialog and listeners
+/** Modal dialog */
 let modal;
 
 
+/** Close modal dialog */
 function cancelSelect() {
   //console.log('called cancel');
   modal.close();
 }
 
 
-// Export rows for selected calendars
-// 1. Popup modal with calendars to select
-// 2. Generate the iCalendar entries
-// 3. Open a window with a link for the export.
-//    This is a window rather than a modal to allow multiple iCalendar
-//    to be generated
+/**
+ * Export rows for selected calendars
+ * 1. Popup modal with calendars to select
+ * 2. Generate the iCalendar entries
+ * 3. Open a window with a link for the export.
+ *    This is a window rather than a modal to allow multiple iCalendar
+ *    to be generated
+ */
 function exportSelect() {
   const calendarsToExport = new Set();
   if (columns.has('Calendar')) {
@@ -343,8 +378,10 @@ function exportSelect() {
 }
 
 
-// Export the calendar to export
-// NB. The required fields have been chosen
+/**
+ * Export the calendar to export
+ * NB. The required fields have been chosen
+ */
 function exportCalendar() {
   // First, search the spreadsheet for calendars, if any
   allCalendars = calendarsFound = findCalendars();
@@ -356,11 +393,13 @@ function exportCalendar() {
     // else go straight to export all
     exportSelect();
   }
-  console.log(calendarsFound);
 }
 
 
-// Popup window to select calendars to export
+/**
+ * Popup window to select calendars to export
+ * @param calendarsFound - The calendars found in the 'Calendar' column
+ */
 function selectCalendars(calendarsFound) {
   if (calendarsFound.size > 0) {
 
@@ -393,7 +432,10 @@ function selectCalendars(calendarsFound) {
 }
 
 
-// Generate DTSTAMP
+/** 
+ * Generate the DTSTAMP 
+ * @return A DTSTAMP for now
+ */
 function createDTSTAMP() {
   const now = new Date();
   const year = now.getUTCFullYear();
@@ -406,10 +448,12 @@ function createDTSTAMP() {
 }
 
 
-// Parse a day in a format like 'Sunday 12th March' or '12/3/'
-// Return [day number, month], e.g. [12, 'March']
-function parseDate(row) {
-  const rowDate = row[columns.get('Date')];
+/**
+ * Parse a day in a format like 'Sunday 12th March' or '12/3/'
+ * @param rowDate The date string
+ * @return [day number, month], e.g. [12, 'March']
+ */
+function parseDate(rowDate) {
   console.log('Date', rowDate);
 
   // First, try dd/mm/yyyy etc formats
@@ -458,7 +502,12 @@ function parseDate(row) {
 }
 
 
-// Generate the iCalendar data
+/**
+ * Generate the iCalendar data
+ * @param data The data
+ * @param calendarsToExport The calendars selected for export
+ * @return The iCalendar as text
+ */
 function generateICal(data, calendarsToExport) {
   const DTSTAMP = createDTSTAMP();
   const startCol = columns.get('Start');
@@ -526,7 +575,7 @@ function generateICal(data, calendarsToExport) {
 
     } else if (columns.get('Date')) {
       // parse a date
-      const dayMonthYear = parseDate(line);
+      const dayMonthYear = parseDate(line[columns.get('Date')]);
       if (!dayMonthYear) {
         bad(`Bad date ${line[columns.get('Date')]}`, lineNum);
         continue; 
@@ -633,40 +682,61 @@ function generateICal(data, calendarsToExport) {
 }
 
 
-// Convert hour to UTC
-// Always output UTC times. If we were to write TZ=timezone, then 
-// strict conformance with the  RFC 5545 specification) requires that 
-// this timezone be fully specified (including BST and GMT start dates and
-// offsets, etc).  Of course, these dates are the last Sundays in March/October,
-// so they change... :-(
-function convUTC(year, month, day, hour) {
+/**
+ * Convert hour to UTC.
+ * Always output UTC times. If we were to write TZ=timezone, then 
+ * strict conformance with the  RFC 5545 specification) requires that 
+ * this timezone be fully specified (including BST and GMT start dates and
+ * offsets, etc).  Of course, these dates are the last Sundays in March/October,
+ * so they change... :-(
+ * @param year The year
+ * @param month The month
+ * @param day The day
+ * @param hour The hour
+ * @return the hour as UTC, padded to 2 digits
+ */
+function convHourUTC(year, month, day, hour) {
   const dt = new Date(year, month-1, day, hour);
   return String(dt.getUTCHours()).padStart(2, '0');
 }
 
 
-// iCalendar (and vCalendar) header
-// TODO nice to include X-WR-CALNAME: property
+/**
+ * @return iCalendar (and vCalendar) header
+ */
 function printCALhdr() {
+  // TODO nice to include X-WR-CALNAME: property
   const hdr = 
 `BEGIN:VCALENDAR
 VERSION:${VERSION}
-PRODID:Richard Jones xl2cal.html generated
+PRODID:Generated by xl2cal.html (Richard Jones, 2023)
 CALSCALE:GREGORIAN
 `;
   return hdr;
 }
 
 
-// Print iCalendar entry
+/**
+ * Print iCalendar entry
+ * @param DTSTAMP The DTSTAMP
+ * @param theNum    The day number
+ * @param theMonth  The month number
+ * @param theStart  The start hour
+ * @param theMin    The start minute 
+ * @param theEnd    The end hour
+ * @param theEndMin The end minute
+ * @param theEvent The event name
+ * @param theHighwater Other text to add to event (e.g. hig hwater time)
+ * @return iCalendar entry
+ */
 function printICAL (DTSTAMP, theNum, theMonth, theStart, theMin, 
                     theEnd, theEndMin, theEvent, theHighwater) {
   const hw = theHighwater === '' ? '' : `, HW=${theHighwater}`;
   const summary = theEvent + hw;
   // $summary =~ s/.{63}\K/\n /sg; # fold lines longer than 75 octets
   const day = theYear.padStart(4, '0') + theMonth.padStart(2, '0') + theNum.padStart(2, '0');
-  const start = convUTC(theYear, theMonth, theNum, theStart) + theMin + '00';
-  const end = convUTC(theYear, theMonth, theNum, theEnd) + theEndMin + '00';
+  const start = convHourUTC(theYear, theMonth, theNum, theStart) + theMin + '00';
+  const end = convHourUTC(theYear, theMonth, theNum, theEnd) + theEndMin + '00';
   let alarm = start - ADVANCE;
   if (alarm < 0) { 
     alert(`Alarm set for previous day: ${theEvent}`);
@@ -685,12 +755,13 @@ DTEND:${day}${T}${end}${Z}
 SUMMARY:${thePrefix}${summary}
 END:VEVENT
 `;
-  console.log(entry);
   return(entry);
 }
 
 
-// Calendar (and vCalendar) trailer
+/**
+ * @return Calendar (and vCalendar) trailer
+ */
 function printEOCAL() {
   const eoc = 
 `END:VCALENDAR
@@ -699,9 +770,11 @@ function printEOCAL() {
 }
 
 
-// Open a new window with a download link
-// calendarsToExport: the names of the calendars chosen for export
-// iCal: the iCalendar data
+/**
+ * Open a new window with a download link
+ * @param calendarsToExport The names of the calendars chosen for export
+ * @param iCal The iCalendar data
+ */
 function openICalWindow(calendarsToExport, iCal) {
   const newWindow = window.open('', '_blank', 'width=400,height=400');
   newWindow.document.write('<html><head><title>Export iCalendar</title><link rel="stylesheet" type="text/css" href="styles.css"></head><body>');
@@ -732,7 +805,11 @@ function openICalWindow(calendarsToExport, iCal) {
   newWindow.document.write('</body></html>');
 }
 
-// Warn about bad record
+/**
+ * Warn about bad record in the spreadsheet
+ * @param msg The error message
+ * @param lno The number of the line on which the error was found
+ */
 function bad(msg, lno) {
   if (confirm(`BAD RECORD: ${msg} on line ${lno} so ignoring this line.`)) {
     return;
@@ -743,7 +820,7 @@ function bad(msg, lno) {
 }
 
 /*
-TODO Bugs and ossible improvements.
+TODO Bugs and possible improvements.
 
 1. Sanity check on columns chosen.
    When the user selects a column, sniff entries in this column to see if most
@@ -755,5 +832,4 @@ TODO Bugs and ossible improvements.
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
    Probably, don't bother as we now let user bail out early.
 2. TODO Improve placement of select-box components.
-3. TODO Don't require user to hit return on input boxes
 */
