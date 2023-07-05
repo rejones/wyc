@@ -62,34 +62,8 @@ let allCalendars;                                               // Calendars to 
 /** Export button for spreadsheet should only be created once */
 let hasExportBtn = false;
 
-
-/**
- * Handle file dropped on landing site
- * @param {Event} ev - The event
- */
-function dropHandler(ev) {
-  // Prevent default behaviour (prevent file from being opened)
-  ev.preventDefault();
-  const item = ev.dataTransfer.items ?
-    ev.dataTransfer.items[0] :
-    ev.dataTransfer.files[0];
-  if (item.kind === "file") {
-    const file = item.getAsFile();
-    //console.log('DataTransferItemList/DataTransfer', `… file.name = ${file.name}`);
-    // set file.name in the fileChooser
-    document.getElementById('file-chooser').files = ev.dataTransfer.files;
-    handleFile(file);
-  }
-}
-
-/**
- * Handle file dragged onto landing site
- * @param {Event} ev - The event
- */
-function dragOverHandler(ev) {
-  // Prevent default behaviour (prevent file from being opened)
-  ev.preventDefault();
-}
+/** Modal dialog */
+let modal;
 
 
 /** 
@@ -137,6 +111,35 @@ window.addEventListener('DOMContentLoaded', () => {
     thePrefix = prefixBox.value;
   });
 });
+
+
+/**
+ * Handle file dropped on landing site
+ * @param {Event} ev - The event
+ */
+function dropHandler(ev) {
+  // Prevent default behaviour (prevent file from being opened)
+  ev.preventDefault();
+  const item = ev.dataTransfer.items ?
+    ev.dataTransfer.items[0] :
+    ev.dataTransfer.files[0];
+  if (item.kind === "file") {
+    const file = item.getAsFile();
+    //console.log('DataTransferItemList/DataTransfer', `… file.name = ${file.name}`);
+    // set file.name in the fileChooser
+    document.getElementById('file-chooser').files = ev.dataTransfer.files;
+    handleFile(file);
+  }
+}
+
+/**
+ * Handle file dragged onto landing site
+ * @param {Event} ev - The event
+ */
+function dragOverHandler(ev) {
+  // Prevent default behaviour (prevent file from being opened)
+  ev.preventDefault();
+}
 
 
 /**
@@ -337,10 +340,6 @@ function findCalendars() {
   }
   return calendarsFound;
 }
-
-
-/** Modal dialog */
-let modal;
 
 
 /** Close modal dialog */
