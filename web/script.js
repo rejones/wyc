@@ -77,7 +77,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const fileChooser = document.getElementById('file-chooser');
   const yearDropdown = document.getElementById('year-dropdown');
   
-  fileChooser.addEventListener('change', handleFileEvent);
+  fileChooser.addEventListener('change', loadFileEvent);
 
   // Generate the range of years
   const currentYear = new Date().getFullYear();
@@ -95,15 +95,6 @@ window.addEventListener('DOMContentLoaded', () => {
   // Access the selected year from the dropdown
   theYear = yearDropdown.value;
   
-    // The sheet to read
-  const sheetBox = document.getElementById('the-sheet');
-  console.log('initial sheetBox.value', sheetBox.value);
-  theSheet = sheetBox.value;
-  sheetBox.addEventListener('input', () => {
-    theSheet = sheetBox.value;
-    //console.log('theSheet:', theSheet);
-  });
-
   // Optional label prefix
   const prefixBox = document.getElementById('event-prefix');
   thePrefix = prefixBox.value;
@@ -128,7 +119,7 @@ function dropHandler(ev) {
     //console.log('DataTransferItemList/DataTransfer', `… file.name = ${file.name}`);
     // set file.name in the fileChooser
     document.getElementById('file-chooser').files = ev.dataTransfer.files;
-    handleFile(file);
+    loadFile(file);
   }
 }
 
@@ -146,9 +137,9 @@ function dragOverHandler(ev) {
  * Read the spreadsheet file
  * @param {Event} event - The event
  */
-function handleFileEvent(event) {
+function loadFileEvent(event) {
   const file = event.target.files[0];
-  handleFile(file);
+  loadFile(file);
 }
 
 
@@ -156,43 +147,59 @@ function handleFileEvent(event) {
  * Read the spreadsheet and render it in the document
  * @param {File} file - The file loaded
  */
-function handleFile(file) {
+function loadFile(file) {
   console.log(file.name);
 
   const reader = new FileReader();
   reader.onload = function (e) {
     const data = new Uint8Array(e.target.result);
     const workbook = XLSX.read(data, { type: 'array' });
+    console.log('sheet names', workbook.SheetNames);
 
-    // theSheet must be either a number or a string
     let sheetName;
-    if (isNaN(theSheet)) { // it's a string
-      if (workbook.SheetNames.includes(theSheet)) {
-        sheetName = theSheet;
-      } else {
-        alert(`The spreadsheet doesn't have a sheet '${theSheet}'`);
-        return;
-      } 
-    } else {  // it's a number
-      if ( (0 <= +theSheet) &&
-           (workbook.SheetNames.length > +theSheet) ) {
-        sheetName = workbook.SheetNames[+theSheet];
-      } else {
-        alert(`Sheet number '${theSheet}' is out of range`);
-        return;
-      }
+
+    //Drop-down list to select sheet to use
+    const sheetChooser = document.getElementById("sheet-names");
+    const childNodes = [];
+
+    // only one sheet
+    if (workbook.SheetNames.length == 1) {
+      sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      renderTable(jsonData);
+    } 
+    else { // we need to choose
+      const selectElt = document.createElement("select");
+      selectElt.id = "select-sheet";
+
+      workbook.SheetNames.forEach(function(sh) {
+        const option = document.createElement("option");
+        option.value = sh;
+        option.text = sh;
+        selectElt.appendChild(option);       
+      });
+
+      selectElt.addEventListener('change', (event) => {
+        console.log(`You chose ${event.target.value}`);
+        sheetName = event.target.value;
+        const sheet = workbook.Sheets[sheetName];
+        jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        renderTable(jsonData);
+      });
+      // Assume the first sheet
+      sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      renderTable(jsonData);
+
+      const label = document.createElement("label");
+      label.innerHTML = 'Select sheet to use:';
+      label.htmlFor = "select-sheet";
+      childNodes.push(label);
+      childNodes.push(selectElt);
     }
-    const sheet = workbook.Sheets[sheetName];
-    jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-    // Add title and instructions here
-    const sheetHeader = document.getElementById('sheet-header');
-    sheetHeader.innerHTML = "2. The spreadsheet";
-    const instructions = document.getElementById('columns-instructions');
-    instructions.innerHTML = 
-        "<em>Select the columns to use from the dropdown lists in the first row</em>";
-
-    renderTable(jsonData);
+    sheetChooser.replaceChildren(...childNodes);   // Replace any previous div
   };
 
   reader.readAsArrayBuffer(file);
@@ -204,6 +211,13 @@ function handleFile(file) {
  * @param {Array} data - The sheet to parse and display
  */
 function renderTable(data) {
+    // Add title and instructions here
+    const sheetHeader = document.getElementById('sheet-header');
+    sheetHeader.innerHTML = "2. The spreadsheet";
+    const instructions = document.getElementById('columns-instructions');
+    instructions.innerHTML = 
+        "<em>Select the columns to use from the dropdown lists in the first row</em>";
+
   const sheetTable = document.getElementById('sheet-table');
   const numColumns = data.length > 0 ? data[0].length : 0;
   let html = '';

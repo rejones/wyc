@@ -123,6 +123,12 @@ label {
 }
 
 /* Select year options and event prefix */
+#select-sheet {
+  color: blue;
+  font-size: inherit;
+}
+
+/* Select sheet */
 #year-dropdown, #event-prefix {
   color: blue;
   font-size: inherit;
