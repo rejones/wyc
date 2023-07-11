@@ -54,8 +54,6 @@ const Z = 'Z';      // 'Z' means UTC rather than local time
 
 // Spreadsheet data
 let theSheet = 0;                        // The sheet to read
-let theYear = new Date().getFullYear();  // The year to generate the calendar for
-let thePrefix = '';                      // The prefix for all event labels
 const theData = [];
 let allCalendars;                                               // Calendars to use
 
@@ -92,15 +90,6 @@ window.addEventListener('DOMContentLoaded', () => {
     option.selected = year == currentYear;
     yearDropdown.appendChild(option);
   }
-  // Access the selected year from the dropdown
-  theYear = yearDropdown.value;
-  
-  // Optional label prefix
-  const prefixBox = document.getElementById('event-prefix');
-  thePrefix = prefixBox.value;
-  prefixBox.addEventListener('input', () => {
-    thePrefix = prefixBox.value;
-  });
 });
 
 
@@ -148,61 +137,94 @@ function loadFileEvent(event) {
  * @param {File} file - The file loaded
  */
 function loadFile(file) {
-  console.log(file.name);
+  //console.log(file.name);
 
   const reader = new FileReader();
   reader.onload = function (e) {
     const data = new Uint8Array(e.target.result);
     const workbook = XLSX.read(data, { type: 'array' });
-    console.log('sheet names', workbook.SheetNames);
 
     let sheetName;
-
-    //Drop-down list to select sheet to use
-    const sheetChooser = document.getElementById("sheet-names");
     const childNodes = [];
 
-    // only one sheet
     if (workbook.SheetNames.length == 1) {
+      // only one sheet
       sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
       jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      replaceSheetGroup();
+      addSpreadsheetHeading();
+      const sheetChooser = document.getElementById("sheet-names");
+      sheetChooser.replaceChildren();
       renderTable(jsonData);
     } 
-    else { // we need to choose
-      const selectElt = document.createElement("select");
-      selectElt.id = "select-sheet";
+    else { 
+      replaceSheetGroup();
+      addSpreadsheetHeading();
+      // choose sheet from drop-down list
+      const select = document.createElement("select");
+      select.id = "select-sheet";
 
       workbook.SheetNames.forEach(function(sh) {
         const option = document.createElement("option");
         option.value = sh;
         option.text = sh;
-        selectElt.appendChild(option);       
+        select.appendChild(option);       
       });
 
-      selectElt.addEventListener('change', (event) => {
-        console.log(`You chose ${event.target.value}`);
+      select.addEventListener('change', (event) => {
         sheetName = event.target.value;
         const sheet = workbook.Sheets[sheetName];
         jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
         renderTable(jsonData);
       });
-      // Assume the first sheet
-      sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      renderTable(jsonData);
 
       const label = document.createElement("label");
       label.innerHTML = 'Select sheet to use:';
       label.htmlFor = "select-sheet";
       childNodes.push(label);
-      childNodes.push(selectElt);
+      childNodes.push(select);
+      const sheetChooser = document.getElementById("sheet-names");
+      sheetChooser.replaceChildren(...childNodes);   // Replace any previous div
+
+      // Assume the first sheet initially
+      sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      renderTable(jsonData);
     }
-    sheetChooser.replaceChildren(...childNodes);   // Replace any previous div
   };
 
   reader.readAsArrayBuffer(file);
+}
+
+
+/**
+ * Clear any previous children of the sheet-group
+ */
+function replaceSheetGroup() {
+  const sheetGroup = document.getElementById("sheet-group");
+  const sheetHdr = document.createElement("h2");
+  sheetHdr.id = "sheet-header";
+  const sheetNamesDiv = document.createElement("div");
+  sheetNamesDiv.id = "sheet-names";
+  const colInstrs = document.createElement("p");
+  colInstrs.id = "columns-instructions";
+  const sheetTbl = document.createElement("table");
+  sheetTbl.id = "sheet-table";
+  sheetGroup.replaceChildren(sheetHdr, sheetNamesDiv, colInstrs, sheetTbl);
+}
+
+
+/**
+ * Add spreadsheet section title and instructions
+ */
+function addSpreadsheetHeading() {
+  const sheetHeader = document.getElementById('sheet-header');
+  sheetHeader.innerHTML = "2. The spreadsheet";
+  const instructions = document.getElementById('columns-instructions');
+  instructions.innerHTML = 
+      "<em>Select the columns to use from the dropdown lists in the first row</em>";
 }
 
 
@@ -211,12 +233,6 @@ function loadFile(file) {
  * @param {Array} data - The sheet to parse and display
  */
 function renderTable(data) {
-    // Add title and instructions here
-    const sheetHeader = document.getElementById('sheet-header');
-    sheetHeader.innerHTML = "2. The spreadsheet";
-    const instructions = document.getElementById('columns-instructions');
-    instructions.innerHTML = 
-        "<em>Select the columns to use from the dropdown lists in the first row</em>";
 
   const sheetTable = document.getElementById('sheet-table');
   const numColumns = data.length > 0 ? data[0].length : 0;
@@ -417,9 +433,11 @@ function selectCalendars(calendarsFound) {
   if (calendarsFound.size > 0) {
 
     modal = new SV.Modal('select-calendars-modal');
+    /*
     modal.getModalElement().addEventListener('sv.modal.close', function (ev) {
 	console.log('Closed the modal');
     });
+    */
    
     // inject some content
     let html = `
@@ -467,8 +485,6 @@ function createDTSTAMP() {
  * @return [day number, month], e.g. [12, 'March']
  */
 function parseDate(rowDate) {
-  console.log('Date', rowDate);
-
   // First, try dd/mm/yyyy etc formats
   let matchDate;
   if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)\/(\d{2})$/)) {
@@ -525,6 +541,9 @@ function generateICal(data, calendarsToExport) {
   const DTSTAMP = createDTSTAMP();
   const startCol = columns.get('Start');
   const startPattern = /^\d{4}$|^\d{2}:\d{2}$/;
+
+  const theYear = document.getElementById('year-dropdown').value;
+  let thePrefix = document.getElementById('event-prefix').value;
 
   // Print header for calendars
   let text = printCALhdr();
@@ -685,8 +704,7 @@ function generateICal(data, calendarsToExport) {
     const highwater = columns.has('HW') ? line[columns.get('HW')] : '';
    
     // Print the record
-    //console.log(`Line ${lineNum}:`,theNum, theMonth, theHour, theMin, theEndHour, theEndMin, theEvent, highwater);
-    text += printICAL(DTSTAMP, theNum, theMonth, theHour, theMin, theEndHour, theEndMin, theEvent, highwater);
+    text += printICAL(DTSTAMP, theNum, theMonth, theYear, theHour, theMin, theEndHour, theEndMin, thePrefix, theEvent, highwater);
   }
 
   text += printEOCAL();
@@ -732,8 +750,10 @@ CALSCALE:GREGORIAN
 /**
  * Print iCalendar entry
  * @param DTSTAMP The DTSTAMP
+ * @param thePrefix The prefix for events
  * @param theNum    The day number
  * @param theMonth  The month number
+ * @param theYear  The year
  * @param theStart  The start hour
  * @param theMin    The start minute 
  * @param theEnd    The end hour
@@ -742,8 +762,8 @@ CALSCALE:GREGORIAN
  * @param theHighwater Other text to add to event (e.g. hig hwater time)
  * @return iCalendar entry
  */
-function printICAL (DTSTAMP, theNum, theMonth, theStart, theMin, 
-                    theEnd, theEndMin, theEvent, theHighwater) {
+function printICAL (DTSTAMP, theNum, theMonth, theYear, theStart, theMin, 
+                    theEnd, theEndMin, thePrefix, theEvent, theHighwater) {
   const hw = theHighwater === '' ? '' : `, HW=${theHighwater}`;
   const summary = theEvent + hw;
   // $summary =~ s/.{63}\K/\n /sg; # fold lines longer than 75 octets

@@ -29,41 +29,25 @@
         </div>
         <input type="file" accept=".xlsx" id="file-chooser">
       </div>
-  
-      <div id="sheet-names">
-      </div>
-
-      <!--
-      <div class="sheet-name-number">
-        <label for="the-sheet">Sheet name or number:</label><br>
-        <input type="text" id="the-sheet" name="the-sheet" value="0"
-               title="Sheet number(from 0) or name">
-      </div>
-      -->
     </div>
 
-      <div class="select-box">
-        <label for="year-dropdown">Select Year:</label>
-        <select id="year-dropdown">
-          <!-- script will generate the options -->
-        </select>
-        <label for="event-prefix">Events Prefix:</label><br>
-        <input type="text" id="event-prefix" name="event=prefix" value="WYC"
-               title="This will be prefixed to each event in the calendar">
-      </div>
+    <div class="select-box">
+      <label for="year-dropdown">Select Year:</label>
+      <select id="year-dropdown">
+        <!-- script will generate the options -->
+      </select>
+      <label for="event-prefix">Events Prefix:</label><br>
+      <input type="text" id="event-prefix" name="event=prefix" value="WYC"
+             title="This will be prefixed to each event in the calendar">
+    </div>
 
     <!-- The spreadsheet -->
-    <div class="sheet-group">
-      <h2 id="sheet-header"></h2>
-      <p id="columns-instructions"></p>
-      <table id="sheet-table"></table>
-    </div>
+    <div class="sheet-group" id="sheet-group"> </div>
 
   </div>
 
   <!--<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>-->
   <script lang="javascript" src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.mini.min.js"></script>
-  
   <script src="script.js"></script>
   <script src="sv-modal.js?dev"></script>
 </body>
