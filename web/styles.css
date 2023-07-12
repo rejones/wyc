@@ -87,8 +87,7 @@ p {
   background-color: #f2f2f2;
 }
 
-/* Contains the landing-site/drop-zone, the year select-box 
- * (year-dropdown and event-prefix) */
+/* Contains the landing-site/drop-zone */
 .sheet-chooser-group {
   display: flex;
   flex-wrap: wrap;
@@ -109,18 +108,21 @@ select {
   border-radius: 4px;
 }
 
+/* Contains the year label and select-box and
+ * the event prefix label and input
+ */
 .select-box {
-  flex: none;
-  width: 8em;
   margin-right: 2rem;
-  display: inline-block;
+  display: flex;
+  justify-content: space-between;
 }
 
-/* Additional styles for select box layout */
+/* Additional styles for select box layout 
 label {
   display: block;
   margin-top: 0.5em;
 }
+*/
 
 /* Select year options and event prefix */
 #select-sheet {
@@ -132,6 +134,7 @@ label {
 #year-dropdown, #event-prefix {
   color: blue;
   font-size: inherit;
+  max-width: 25vw;
 }
 
 /* The spreadsheet */

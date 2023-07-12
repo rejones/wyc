@@ -32,13 +32,17 @@
     </div>
 
     <div class="select-box">
-      <label for="year-dropdown">Select Year:</label>
-      <select id="year-dropdown">
-        <!-- script will generate the options -->
-      </select>
-      <label for="event-prefix">Events Prefix:</label><br>
-      <input type="text" id="event-prefix" name="event=prefix" value="WYC"
-             title="This will be prefixed to each event in the calendar">
+      <div style="display:flex; vertical-align: middle">
+        <label for="year-dropdown">Year:&nbsp;</label>
+        <select id="year-dropdown">
+          <!-- script will generate the options -->
+        </select>
+      </div>
+      <div style="display:flex; vertical-align: middle">
+        <label for="event-prefix">Events Prefix:&nbsp;</label><br>
+        <input type="text" id="event-prefix" name="event=prefix" value="WYC"
+               title="This will be prefixed to each event in the calendar">
+      </div>
     </div>
 
     <!-- The spreadsheet -->

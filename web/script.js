@@ -143,9 +143,7 @@ function loadFile(file) {
   reader.onload = function (e) {
     const data = new Uint8Array(e.target.result);
     const workbook = XLSX.read(data, { type: 'array' });
-
     let sheetName;
-    const childNodes = [];
 
     if (workbook.SheetNames.length == 1) {
       // only one sheet
@@ -179,13 +177,15 @@ function loadFile(file) {
         renderTable(jsonData);
       });
 
+      const div = document.createElement("div");
+      div.style.display = "flex";
       const label = document.createElement("label");
       label.innerHTML = 'Select sheet to use:';
       label.htmlFor = "select-sheet";
-      childNodes.push(label);
-      childNodes.push(select);
+      div.appendChild(label);
+      div.appendChild(select);
       const sheetChooser = document.getElementById("sheet-names");
-      sheetChooser.replaceChildren(...childNodes);   // Replace any previous div
+      sheetChooser.replaceChildren(div);   // Replace any previous div
 
       // Assume the first sheet initially
       sheetName = workbook.SheetNames[0];
