@@ -191,6 +191,7 @@ function loadFile(file) {
       sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
       jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      // Clear any previous column selections
       renderTable(jsonData);
     }
   };
@@ -236,6 +237,7 @@ function renderTable(data) {
 
   const sheetTable = document.getElementById('sheet-table');
   const numColumns = data.length > 0 ? data[0].length : 0;
+  columns.clear();
   let html = '';
   let newRow;
 
@@ -314,11 +316,13 @@ function renderTable(data) {
 
       //Enable export button once required columns are chosen
       const exportBtn = document.getElementById('export-button');
+      console.log(columns);
       exportBtn.disabled = !( 
-                   (columns.get('Day') && columns.get('Month') || columns.get('Date'))
-                    && columns.get('Start')
-                    && columns.get('Event')
+                   ((columns.has('Day') && columns.has('Month')) || columns.has('Date'))
+                    && columns.has('Start')
+                    && columns.has('Event')
                             );
+      console.log('exportBtn.disabled', exportBtn.disabled);
     });
   });
 
@@ -331,6 +335,8 @@ function renderTable(data) {
     exportBtn.addEventListener('click', exportCalendar);
     document.body.appendChild(exportBtn);
     hasExportBtn = true;
+  } else {
+    document.getElementById('export-button').disabled = true;
   }
 }
 
@@ -357,7 +363,7 @@ function getKeyByValue(map, value) {
  */
 function findCalendars() {
   const calendarsFound = new Set();
-  if (columns.get('Calendar')) {
+  if (columns.has('Calendar')) {
     const startCol = columns.get('Start');
     const calCol = columns.get('Calendar');
     const pattern = /^\d{4}$|^\d{2}:\d{2}$/; // looks like a Start time
@@ -478,6 +484,19 @@ function createDTSTAMP() {
   return `${year}${month}${day}${T}${hours}${minutes}${seconds}`;
 }
 
+/**
+ * Is a string a month (or prefix)?
+ * @param day The possible month string
+ * @return True if so
+ */
+function isMonth(month) {
+  month = month.toUpperCase();
+  return ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST',
+          'SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'].find((m) => {
+      return m.startsWith(month);
+    }) != undefined;
+}
+
 
 /**
  * Parse a day in a format like 'Sunday 12th March' or '12/3/'
@@ -485,6 +504,7 @@ function createDTSTAMP() {
  * @return [day number, month], e.g. [12, 'March']
  */
 function parseDate(rowDate) {
+  console.log('rowDate', rowDate);
   // First, try dd/mm/yyyy etc formats
   let matchDate;
   if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)\/(\d{2})$/)) {
@@ -504,9 +524,9 @@ function parseDate(rowDate) {
   const yearRE = /^\d{4}$/;
   let dayMonthYear = rowDate.split(delimiterRE)
                      .filter(it => it !== '')              // remove any empty elements
-                     .map(it => it.toUpperCase())          // make all upper case
-                     .filter(it => !it.endsWith('DAY'));   // remove any day names
-  //console.log('dayMonthYear', dayMonthYear);
+                     .map(it => it.toUpperCase());         // make all upper case
+                     //.filter(it => !isDay(it));             // remove any day names TODO Needs to accept all forms of days
+  console.log('dayMonthYear', dayMonthYear);
   const years = dayMonthYear
                 .filter (it => yearRE.test(it));         // get any year
   //console.log('years', years);
@@ -517,8 +537,9 @@ function parseDate(rowDate) {
                .filter(it => /^\d+[A-Z]*$/.test(it))   // only day strings 
                .map(it => it.replace(/[A-Z]*$/,''));   // remove any ordinal characters
   //console.log('days', days);
-  const months = dayMonth
-                 .filter(it => /^[A-Z]+$/.test(it)); 
+  //const months = dayMonth
+  //               .filter(it => /^[A-Z]+$/.test(it)); 
+  const months = dayMonth.filter(isMonth);             // get any month(s)
   //console.log('months',months);
   let rv = (!days.length || !months.length) ?          // must have day and month numbers
     null :  // something went wrong
@@ -579,7 +600,7 @@ function generateICal(data, calendarsToExport) {
     // Get the day and month
     let theNum, theMonth;
 
-    if (columns.get('Day') && columns.get('Month')) {
+    if (columns.has('Day') && columns.has('Month')) {
       const lineMonth = line[columns.get('Month')];
       // allow either month number or string
       theMonth = (/^\d\d?$/.test(lineMonth)) ?
@@ -605,7 +626,7 @@ function generateICal(data, calendarsToExport) {
         continue; 
       }
 
-    } else if (columns.get('Date')) {
+    } else if (columns.has('Date')) {
       // parse a date
       const dayMonthYear = parseDate(line[columns.get('Date')]);
       if (!dayMonthYear) {
@@ -764,6 +785,7 @@ CALSCALE:GREGORIAN
  */
 function printICAL (DTSTAMP, theNum, theMonth, theYear, theStart, theMin, 
                     theEnd, theEndMin, thePrefix, theEvent, theHighwater) {
+  console.log(DTSTAMP, theNum, theMonth, theYear, theStart, theMin, theEnd, theEndMin, thePrefix, theEvent, theHighwater);
   const hw = theHighwater === '' ? '' : `, HW=${theHighwater}`;
   const summary = theEvent + hw;
   // $summary =~ s/.{63}\K/\n /sg; # fold lines longer than 75 octets
