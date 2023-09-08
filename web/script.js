@@ -26,6 +26,7 @@ const months = new Map([
   ['DEC', '12']
 ]);
 const MONTHS_PREFIX_LEN = 3;
+const daysInMonth = [31,28,31,30,31,30,31,31,39,31,30,31];
 
 /**
  * Hash of column names to numbers.
@@ -63,6 +64,13 @@ let hasExportBtn = false;
 /** Modal dialog */
 let modal;
 
+/* Deal with errors
+window.onerror = function (error, source, lineno, colno, error) {
+  alert("Unexpected error!\n" +
+        error +
+        "\nPlease report to Richard Jones");
+}
+*/
 
 /** 
  * Add listener on events to 
@@ -257,16 +265,31 @@ function renderTable(data) {
     html += '<tr>';
     newRow = [];
     
+    console.log(row);
     for (let cell of row) {
+      console.log(cell, cell%1, typeof cell);
       // Convert cell value to string
       let cellValue = cell == undefined ? '' : String(cell);
   
       // Check if the cell format is "hh:mm"
-      if (typeof cell === 'number' && cell % 1 !== 0) {
-        const hours = Math.floor(cell * 24);
-        const minutes = Math.round(((cell * 24 ) % 1) * 60);
-        cellValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      if (typeof cell === 'number') {
+        if (cell % 1 !== 0) { 
+          // Assume this is a time
+          console.log('here');
+          const hours = Math.floor(cell * 24);
+          const minutes = Math.round(((cell * 24 ) % 1) * 60);
+          cellValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+        else if (cell > 43481) { // days between 1 Jan 1900 and 1 Jan 2020
+          // Assume that this is a date
+          const date = new Date(Date.UTC(0, 0, cell-1));
+          if (!isNaN(date.getFullYear())) {
+            cellValue = date.toDateString();
+          }
+        }
       }
+          
+      console.log(cellValue);
 
       html += `<td>${cellValue}</td>`;
       newRow.push(cellValue);
@@ -316,13 +339,11 @@ function renderTable(data) {
 
       //Enable export button once required columns are chosen
       const exportBtn = document.getElementById('export-button');
-      console.log(columns);
       exportBtn.disabled = !( 
                    ((columns.has('Day') && columns.has('Month')) || columns.has('Date'))
                     && columns.has('Start')
                     && columns.has('Event')
                             );
-      console.log('exportBtn.disabled', exportBtn.disabled);
     });
   });
 
@@ -504,19 +525,26 @@ function isMonth(month) {
  * @return [day number, month], e.g. [12, 'March']
  */
 function parseDate(rowDate) {
-  console.log('rowDate', rowDate);
-  // First, try dd/mm/yyyy etc formats
-  let matchDate;
-  if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)\/(\d{2})$/)) {
-    return [ matchDate[1], matchDate[2], "20"+matchDate[3] ];
-  }
-  else if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)\/(\d{4})$/)) {
-    return [ matchDate[1], matchDate[2], matchDate[3] ];
-  }
-  else if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)$/)) {
-    return [ matchDate[1], matchDate[2] ];
-  }
+  console.log('parseDate', rowDate, typeof rowDate);
+  if (!rowDate)
+    return null;
 
+  // First, try Excel Date format which is read as a number
+  // TODO not needed now that renderTable converts Excel serial values to date strings 
+  if (!isNaN(rowDate)) {
+    // Try converting from Excel date to JS date
+    alert(`rowDate (${rowDate}) is a number`);
+    const date = new Date(Date.UTC(0, 0, rowDate -1));
+    console.log(date);
+    if (isNaN(date.getFullYear())) {
+      console.log('parseDate returns null!');
+      return null;
+    }
+    console.log(rowDate, date.getDate(), date.getMonth() + 1, date.getFullYear());
+    console.log([date.getDate(), date.getMonth() + 1, date.getFullYear()]);
+    return [date.getDate().toString(), date.getMonth() + 1, date.getFullYear()].map((e) => {return e.toString()});
+  }
+  
   //Next, try numbers and words
 
   // Define the regular expression for the delimiters (spaces and commas)
@@ -526,7 +554,7 @@ function parseDate(rowDate) {
                      .filter(it => it !== '')              // remove any empty elements
                      .map(it => it.toUpperCase());         // make all upper case
                      //.filter(it => !isDay(it));             // remove any day names TODO Needs to accept all forms of days
-  console.log('dayMonthYear', dayMonthYear);
+  //console.log('dayMonthYear', dayMonthYear);
   const years = dayMonthYear
                 .filter (it => yearRE.test(it));         // get any year
   //console.log('years', years);
@@ -541,14 +569,12 @@ function parseDate(rowDate) {
   //               .filter(it => /^[A-Z]+$/.test(it)); 
   const months = dayMonth.filter(isMonth);             // get any month(s)
   //console.log('months',months);
-  let rv = (!days.length || !months.length) ?          // must have day and month numbers
-    null :  // something went wrong
+  console.log(days[0], months[0], years[0]);
+  if (!days.length || !months.length)          // must have day and month numbers
+    return null;  
+  return years.length ? 
+    [days[0], months[0], years[0]] :
     [days[0], months[0]];
-  if (rv && years.length) {
-    rv =  [days[0], months[0], years[0]];
-  }
-  //console.log('rv', rv);
-  return rv;
 }
 
 
@@ -563,7 +589,7 @@ function generateICal(data, calendarsToExport) {
   const startCol = columns.get('Start');
   const startPattern = /^\d{4}$|^\d{2}:\d{2}$/;
 
-  const theYear = document.getElementById('year-dropdown').value;
+  const theDefaultYear = document.getElementById('year-dropdown').value;
   let thePrefix = document.getElementById('event-prefix').value;
 
   // Print header for calendars
@@ -598,9 +624,10 @@ function generateICal(data, calendarsToExport) {
     }
 
     // Get the day and month
-    let theNum, theMonth;
+    let theNum, theMonth, theYear;
 
     if (columns.has('Day') && columns.has('Month')) {
+      theYear = theDefaultYear;
       const lineMonth = line[columns.get('Month')];
       // allow either month number or string
       theMonth = (/^\d\d?$/.test(lineMonth)) ?
@@ -616,7 +643,7 @@ function generateICal(data, calendarsToExport) {
       let matchDay;
       if (matchDay = line[columns.get('Day')].match(/^(\d\d?)(st|nd|rd|th)?/i)) {
         theNum = matchDay[1];
-        if ((theNum < 1) || (theNum > new Date(theYear, theMonth, 0).getDate())) {
+        if ((theNum < 1) || (theNum > new Date(theDefaultYear, theMonth, 0).getDate())) {
           bad (`${theNum} is out of range for a day in month ${theMonth}`, lineNum); 
           continue; 
         }
@@ -631,13 +658,17 @@ function generateICal(data, calendarsToExport) {
       const dayMonthYear = parseDate(line[columns.get('Date')]);
       if (!dayMonthYear) {
         bad(`Bad date ${line[columns.get('Date')]}`, lineNum);
-        continue; 
+        continue;
       }
+      console.log(dayMonthYear);
   
-      // check that any year value matches the year chosen
+      // check that any year value matches the year chosen 
       if ((dayMonthYear.length === 3) &&
-          (dayMonthYear[2] != theYear)) {
-        alert(`Year doesn't match on line ${lineNum}`);
+          (dayMonthYear[2] != theDefaultYear)) {
+        alert(`Different year (${dayMonthYear[2]})on line ${lineNum}\nIs this what you meant?`);
+      }
+      else if (dayMonthYear.length === 2) {
+        dayMonthYear.push(theDefaultYear);
       }
   
       theNum = dayMonthYear[0];
@@ -645,6 +676,7 @@ function generateICal(data, calendarsToExport) {
         dayMonthYear[1] :
         months.get(dayMonthYear[1].substr(0, 3));
       //console.log('theNum - theMonth', theNum, theMonth);
+      theYear = dayMonthYear[2];
     }
 
     // Get the event
@@ -887,4 +919,6 @@ TODO Bugs and possible improvements.
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
    Probably, don't bother as we now let user bail out early.
 2. TODO Improve placement of select-box components.
+3. Default and actually year
+4. Days in month
 */
