@@ -83,7 +83,8 @@
       cardinal (e.g. "6") or ordinal (e.g. "6th") numbers.<br>
       If Months are specified, the Month column may contain either cardinal numbers
       (e.g. "6), or month name or prefix (e.g. "June" or "Jun").<br>
-      If a Date is specified, almost any format is acceptable.</li>
+      If a Date is specified, most Excel formats should work
+      (e.g. "Saturday 1 July", "1/6/2023", etc).</li>
   <li>A <strong>Start</strong> column. 
       Entries in the start column should usually be times using a 24-hour clock. 
       Acceptable entries include "1400", "14:00" and "14.00". 
@@ -135,14 +136,16 @@
 <h4>Errors</h4>
 <p>
   Take care that dates and times are properly entered in your spreadsheet.
-  In particular, if using the Date column, ensure that there are no missing
-  spaces between words.
+  In particular, if you specify a Date column, ensure that there are no missing
+  spaces between words, no misspelt words.
 </p>
 <p>
   <em>xl2cal</em> will check each row in your spreadsheet.
-  Any row without a valid Start time will be ignored
-  (this allows you to have blank lines or other non-event rows in your
-  spreadsheet).
+  Any row that does not provide a valid date (however specified)
+  or without a valid Start time will be ignored,
+  with a warning.
+  This allows you to have blank lines or other non-event rows in your
+  spreadsheet.
   You have two choices if a warning pops up for a row with invalid data.
   <ul>
     <li>To continue generating your iCalendar without this row,
@@ -161,6 +164,20 @@
   of the window to download the iCalendar.
   You should choose to save the iCalendar in a file with extension 
   <code>.ics</code>.
+</p>
+<p>
+  You can then import the <code>.ics</code> file into the calendar app of your choice,
+  e.g. Apple or Google Calendar. 
+  To check that the calendar generated is correct, import it into a temporary 
+  calendar in your app first. This is what I do on MacOS. 
+  <ol>
+    <li> In the calendar app, create a new calendar.</li>
+    <li> Import the <code>.ics</code> file into this calendar.</li>
+    <li> Check the dates and times.</li>
+    <li> Delete this calendar...</li>
+    <li> ...but, if the entries are all correct, merge them into 
+         another calendar (e.g. I have a separate 'Sailing' calendar).</li>
+  </ol>
 </p>
   </div>
 

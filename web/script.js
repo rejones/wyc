@@ -54,8 +54,8 @@ const Z = 'Z';      // 'Z' means UTC rather than local time
 
 // Spreadsheet data
 let theSheet = 0;                        // The sheet to read
-const theData = [];
-let allCalendars;                                               // Calendars to use
+const theData = [];                      // The data from the spreadsheet
+let allCalendars;                        // Calendars to use
 
 /** Export button for spreadsheet should only be created once */
 let hasExportBtn = false;
@@ -63,13 +63,23 @@ let hasExportBtn = false;
 /** Modal dialog */
 let modal;
 
-/* Deal with errors
-window.onerror = function (error, source, lineno, colno, error) {
-  alert("Unexpected error!\n" +
-        error +
-        "\nPlease report to Richard Jones");
+
+// If user cancels the run..
+class AbortError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "AbortError";
+  }
 }
-*/
+
+
+// Capture all otherwise uncaught errors
+window.onerror = function (error, source, lineno, colno, error) {
+  if (!(error instanceof AbortError))
+    alert("Unexpected error!\n" +
+        error +
+        "\nPlease report");
+}
 
 /** 
  * Add listener on events to 
@@ -112,7 +122,6 @@ function dropHandler(ev) {
     ev.dataTransfer.files[0];
   if (item.kind === "file") {
     const file = item.getAsFile();
-    //console.log('DataTransferItemList/DataTransfer', `… file.name = ${file.name}`);
     // set file.name in the fileChooser
     document.getElementById('file-chooser').files = ev.dataTransfer.files;
     loadFile(file);
@@ -264,9 +273,9 @@ function renderTable(data) {
     html += '<tr>';
     newRow = [];
     
-    console.log(row);
+    //console.log(row);
     for (let cell of row) {
-      console.log(cell, cell%1, typeof cell);
+      //console.log(cell, cell%1, typeof cell);
       // Convert cell value to string
       let cellValue = cell == undefined ? '' : String(cell);
   
@@ -274,7 +283,6 @@ function renderTable(data) {
       if (typeof cell === 'number') {
         if (cell % 1 !== 0) { 
           // Assume this is a time
-          console.log('here');
           const hours = Math.floor(cell * 24);
           const minutes = Math.round(((cell * 24 ) % 1) * 60);
           cellValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
@@ -288,8 +296,7 @@ function renderTable(data) {
         }
       }
           
-      console.log(cellValue);
-
+      //console.log(cellValue);
       html += `<td>${cellValue}</td>`;
       newRow.push(cellValue);
     }
@@ -426,7 +433,7 @@ function exportSelect() {
 
   // Generate iCal
   const iCal = generateICal(theData, calendarsToExport);
-  console.log(iCal);
+  //console.log(iCal);
 
   //Open new window with iCal data
   openICalWindow(calendarsToExport, iCal);
@@ -534,13 +541,13 @@ function parseDate(rowDate) {
     // Try converting from Excel date to JS date
     alert(`rowDate (${rowDate}) is a number`);
     const date = new Date(Date.UTC(0, 0, rowDate -1));
-    console.log(date);
+    //console.log(date);
     if (isNaN(date.getFullYear())) {
-      console.log('parseDate returns null!');
+      //console.log('parseDate returns null!');
       return null;
     }
-    console.log(rowDate, date.getDate(), date.getMonth() + 1, date.getFullYear());
-    console.log([date.getDate(), date.getMonth() + 1, date.getFullYear()]);
+    //console.log(rowDate, date.getDate(), date.getMonth() + 1, date.getFullYear());
+    //console.log([date.getDate(), date.getMonth() + 1, date.getFullYear()]);
     return [date.getDate().toString(), date.getMonth() + 1, date.getFullYear()].map((e) => {return e.toString()});
   }
   
@@ -568,7 +575,7 @@ function parseDate(rowDate) {
   //               .filter(it => /^[A-Z]+$/.test(it)); 
   const months = dayMonth.filter(isMonth);             // get any month(s)
   //console.log('months',months);
-  console.log(days[0], months[0], years[0]);
+  //console.log(days[0], months[0], years[0]);
   if (!days.length || !months.length)          // must have day and month numbers
     return null;  
   return years.length ? 
@@ -629,12 +636,20 @@ function generateICal(data, calendarsToExport) {
       theYear = theDefaultYear;
       const lineMonth = line[columns.get('Month')];
       // allow either month number or string
-      theMonth = (/^\d\d?$/.test(lineMonth)) ?
-                  line[columns.get('Month')] :
-                  0 + months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
-      if (theMonth < 1 || theMonth > 12) {
-        bad(`Invalid month ${month} ${lineMonth} ${line[columns.get('Month')]}`, lineNum);
-        continue;
+      if (/^\d\d?$/.test(lineMonth)) {
+        theMonth =  line[columns.get('Month')];
+      }
+      else {
+        const mth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
+        if (!mth) {
+          bad(`Cannot understand month \"${lineMonth}\"`, lineNum);
+          continue;
+        }
+        theMonth = 0 + mth;
+        if (theMonth < 1 || theMonth > 12) {
+          bad(`Invalid month ${month} ${lineMonth} ${line[columns.get('Month')]}`, lineNum);
+          continue;
+        }
       }
 
       // get the day number
@@ -655,7 +670,7 @@ function generateICal(data, calendarsToExport) {
         bad(`Bad date ${line[columns.get('Date')]}`, lineNum);
         continue;
       }
-      console.log(dayMonthYear);
+      //console.log(dayMonthYear);
   
       // check that any year value matches the year chosen 
       if ((dayMonthYear.length === 3) &&
@@ -818,7 +833,7 @@ CALSCALE:GREGORIAN
  */
 function printICAL (DTSTAMP, theDay, theMonth, theYear, theStart, theMin, 
                     theEnd, theEndMin, thePrefix, theEvent, theHighwater) {
-  console.log(DTSTAMP, theDay, theMonth, theYear, theStart, theMin, theEnd, theEndMin, thePrefix, theEvent, theHighwater);
+  //console.log(DTSTAMP, theDay, theMonth, theYear, theStart, theMin, theEnd, theEndMin, thePrefix, theEvent, theHighwater);
   const hw = theHighwater === '' ? '' : `, HW=${theHighwater}`;
   const summary = theEvent + hw;
   // $summary =~ s/.{63}\K/\n /sg; # fold lines longer than 75 octets
@@ -893,6 +908,7 @@ function openICalWindow(calendarsToExport, iCal) {
   newWindow.document.write('</body></html>');
 }
 
+
 /**
  * Warn about bad record in the spreadsheet
  * @param msg The error message
@@ -903,7 +919,7 @@ function bad(msg, lno) {
     return;
   } else {
     alert("You've have cancelled the run");
-    throw new Error('Run aborted');
+    throw new AbortError('Run aborted');
   }
 }
 
@@ -919,5 +935,5 @@ TODO Bugs and possible improvements.
    . isMonth() - cardinal number, or month name or abbreviation
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
    Probably, don't bother as we now let user bail out early.
-2. TODO Improve placement of select-box components.
+2. TODO Improve placement of select-box components?
 */
