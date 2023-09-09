@@ -26,7 +26,6 @@ const months = new Map([
   ['DEC', '12']
 ]);
 const MONTHS_PREFIX_LEN = 3;
-const daysInMonth = [31,28,31,30,31,30,31,31,39,31,30,31];
 
 /**
  * Hash of column names to numbers.
@@ -624,7 +623,7 @@ function generateICal(data, calendarsToExport) {
     }
 
     // Get the day and month
-    let theNum, theMonth, theYear;
+    let theDay, theMonth, theYear;
 
     if (columns.has('Day') && columns.has('Month')) {
       theYear = theDefaultYear;
@@ -639,17 +638,13 @@ function generateICal(data, calendarsToExport) {
       }
 
       // get the day number
-      //theNum = line[columns.get('Day')];
+      //theDay = line[columns.get('Day')];
       let matchDay;
       if (matchDay = line[columns.get('Day')].match(/^(\d\d?)(st|nd|rd|th)?/i)) {
-        theNum = matchDay[1];
-        if ((theNum < 1) || (theNum > new Date(theDefaultYear, theMonth, 0).getDate())) {
-          bad (`${theNum} is out of range for a day in month ${theMonth}`, lineNum); 
-          continue; 
-        }
+        theDay = matchDay[1];
       } else {
-        //if (!(/^\d\d?$/.test(theNum))) {
-        bad(`Cannot understand day number \"${theNum}\"`, lineNum); 
+        //if (!(/^\d\d?$/.test(theDay))) {
+        bad(`Cannot understand day number \"${theDay}\"`, lineNum); 
         continue; 
       }
 
@@ -671,12 +666,18 @@ function generateICal(data, calendarsToExport) {
         dayMonthYear.push(theDefaultYear);
       }
   
-      theNum = dayMonthYear[0];
+      theDay = dayMonthYear[0];
       theMonth = dayMonthYear[1].match(/^\d+$/) ?
         dayMonthYear[1] :
         months.get(dayMonthYear[1].substr(0, 3));
-      //console.log('theNum - theMonth', theNum, theMonth);
+      //console.log('theDay - theMonth', theDay, theMonth);
       theYear = dayMonthYear[2];
+    }
+
+    // Check that the date is valid
+    if (new Date(theYear, theMonth-1, theDay).getMonth() != theMonth-1) {
+      bad(`${theDay}/${theMonth}/${theYear} is not a valid date`, lineNum);
+      continue;
     }
 
     // Get the event
@@ -757,7 +758,7 @@ function generateICal(data, calendarsToExport) {
     const highwater = columns.has('HW') ? line[columns.get('HW')] : '';
    
     // Print the record
-    text += printICAL(DTSTAMP, theNum, theMonth, theYear, theHour, theMin, theEndHour, theEndMin, thePrefix, theEvent, highwater);
+    text += printICAL(DTSTAMP, theDay, theMonth, theYear, theHour, theMin, theEndHour, theEndMin, thePrefix, theEvent, highwater);
   }
 
   text += printEOCAL();
@@ -804,7 +805,7 @@ CALSCALE:GREGORIAN
  * Print iCalendar entry
  * @param DTSTAMP The DTSTAMP
  * @param thePrefix The prefix for events
- * @param theNum    The day number
+ * @param theDay    The day number
  * @param theMonth  The month number
  * @param theYear  The year
  * @param theStart  The start hour
@@ -815,15 +816,15 @@ CALSCALE:GREGORIAN
  * @param theHighwater Other text to add to event (e.g. hig hwater time)
  * @return iCalendar entry
  */
-function printICAL (DTSTAMP, theNum, theMonth, theYear, theStart, theMin, 
+function printICAL (DTSTAMP, theDay, theMonth, theYear, theStart, theMin, 
                     theEnd, theEndMin, thePrefix, theEvent, theHighwater) {
-  console.log(DTSTAMP, theNum, theMonth, theYear, theStart, theMin, theEnd, theEndMin, thePrefix, theEvent, theHighwater);
+  console.log(DTSTAMP, theDay, theMonth, theYear, theStart, theMin, theEnd, theEndMin, thePrefix, theEvent, theHighwater);
   const hw = theHighwater === '' ? '' : `, HW=${theHighwater}`;
   const summary = theEvent + hw;
   // $summary =~ s/.{63}\K/\n /sg; # fold lines longer than 75 octets
-  const day = theYear.padStart(4, '0') + theMonth.padStart(2, '0') + theNum.padStart(2, '0');
-  const start = convHourUTC(theYear, theMonth, theNum, theStart) + theMin + '00';
-  const end = convHourUTC(theYear, theMonth, theNum, theEnd) + theEndMin + '00';
+  const day = theYear.padStart(4, '0') + theMonth.padStart(2, '0') + theDay.padStart(2, '0');
+  const start = convHourUTC(theYear, theMonth, theDay, theStart) + theMin + '00';
+  const end = convHourUTC(theYear, theMonth, theDay, theEnd) + theEndMin + '00';
   let alarm = start - ADVANCE;
   if (alarm < 0) { 
     alert(`Alarm set for previous day: ${theEvent}`);
@@ -919,6 +920,4 @@ TODO Bugs and possible improvements.
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
    Probably, don't bother as we now let user bail out early.
 2. TODO Improve placement of select-box components.
-3. Default and actually year
-4. Days in month
 */
