@@ -147,6 +147,10 @@ label {
   display: inline-block;
 }
 
+.column-select {
+  background-color: LightSkyBlue;
+}
+
 #the-sheet {
   color: blue;
   font-size: inherit;
