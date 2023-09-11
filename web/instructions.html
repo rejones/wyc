@@ -95,9 +95,10 @@
       If a <strong>Date</strong> is specified, most Excel formats should work
       (e.g. "Saturday 1 July", "1/6/2023", etc).</li>
   <li>A <strong>Start</strong> column. 
-      Entries in the start column should usually be times using a 24-hour clock. 
-      Acceptable entries include "1400", "14:00" and "14.00". 
+      Entries in the start column should be times using a 24-hour clock.<br> 
+      Acceptable entries include "1400" and "14:00". 
       However, "TBA", "TBC", "NA" and "N/A" are also accepted.<br>
+      <i>DO NOT USE EXCEL TIME FORMATS.</i><br>
       Lines without valid Start times (such as headers, blank lines) are
       ignored.</li>
   <li>An <strong>Event</strong> column, describing the event.</li>
@@ -109,17 +110,21 @@ These columns are optional and do not need to be selected.
   <li>A high-water (<b>HW</b>) column.<br> 
       If this column is specified,
       any entry in this column (e.g. "1500") will be appended to the
-      entry in the <strong>Event</strong> column (e.g. "Race 1" becomes "Race 1, HW=1500").
-      Actually, this entry can be anything - it does not need to be high-water.</li>
+      entry in the <strong>Event</strong> column (e.g. "Race 1" becomes "Race 1, HW=1500").</li>
   <li>An <b>End</b> column.<br> 
       If this column is specified, any entry in this column will be used for the
       end time of an event. 
-      Otherwise, the end time will be the start time plus the duration.</li>
+      Otherwise, the end time will be the start time plus the duration.<br>
+      Entries in the start column should be times using a 24-hour clock.<br> 
+      Acceptable entries include "1400" and "14:00".<br> 
+      <i>DO NOT USE EXCEL TIME FORMATS.</i><li>
   <li>A <b>Duration</b> column.<br>
       If this column is specified, any entry in this column will be used for the
       duration of an event.
       Otherwise, the event will be given the default duration from the 
-      <span class="instr-box">Duration</span> box.</li>
+      <span class="instr-box">Duration</span> box.
+      Acceptable entries include "2" and "2:30".<br> 
+      <i>DO NOT USE EXCEL TIME FORMATS.</i><li>
   <li>A <b>Calendar</b> column.<br>
       This is intended to allow separate calendars to be generated from a
       single spreadsheet,
@@ -151,11 +156,24 @@ These columns are optional and do not need to be selected.
   Click the <span class="instr-button">Export</span> button to complete
   generating your calendar.
 </p>
+
 <h4>Errors</h4>
 <p>
   Take care that dates and times are properly entered in your spreadsheet.
-  In particular, if you specify a Date column, ensure that there are no missing
-  spaces between words, no misspelt words.
+  In particular, 
+  <ul>
+  <li>If you specify a <strong>Date</strong> column, ensure that there are no missing
+      spaces between words, no misspelt words.</li>
+  <li>Be careful with Excel formats. Excel exports many of these formats as
+      numbers, making it difficult to distinguish a date from time.
+      <em>xl2cal</em> will interpret any large integer as a date 
+      (Excel dates are the number of days since 1 January 1900), so the Date
+      format is acceptable for the <strong>Date</strong> column.
+      However, do not use Excel's special formats for 
+      <strong>Start time</strong>,
+      <strong>End time</strong> or
+      <strong>Duration</strong>.</li>
+  </ul>
 </p>
 <p>
   <em>xl2cal</em> will check each row in your spreadsheet.

@@ -23,18 +23,23 @@
     <div class="sheet-chooser-group">
       <div class="landing-site">
         <div id="drop-zone" 
+             title="Drag and drop your events spreadsheet 
+               or click the 'Choose File' button"
              ondrop="dropHandler(event);"
              ondragover="dragOverHandler(event);">
           <p>Drag and drop a spreadsheet file here.</p>
         </div>
-        <input type="file" accept=".xlsx" id="file-chooser">
+        <input type="file" accept=".xlsx" id="file-chooser"
+               title="Drag and drop your events spreadsheet 
+               or click the 'Choose File' button">
       </div>
     </div>
 
     <div class="select-box">
       <div style="display:flex; vertical-align: middle">
-        <label for="year-dropdown">Year:&nbsp;</label>
-        <select id="year-dropdown">
+        <label for="year-dropdown">Default Year:&nbsp;</label>
+        <select id="year-dropdown"
+                title="Default year for events (can be overridden for particular events)">
           <!-- script will generate the options -->
         </select>
       </div>

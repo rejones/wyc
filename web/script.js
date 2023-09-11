@@ -29,7 +29,8 @@ const MONTHS_PREFIX_LEN = 3;
 
 /**
  * Hash of column names to numbers.
- *  Invariant: mappings are unique, i.e. no two keys may have the same value
+ *  Invariants: mappings are unique, i.e. no two keys may have the same value
+ *              cannot have both CDAY or CMONTH and CDATE
  */
 const columns = new Map();
 const CDAY = 'Day no.';
@@ -41,7 +42,27 @@ const CEND = 'End';
 const CDURATION = 'Duration';
 const CEVENT = 'Event';
 const CCALENDAR = 'Calendar';
-const columnValues = [CDAY, CMONTH, CDATE, CHW, CSTART, CEND, CDURATION, CEVENT, CCALENDAR];
+const columnValues = [CDAY, CMONTH, CDATE, CEVENT, CSTART, CEND, CDURATION, CHW, CCALENDAR];
+const columnTips = new Map([
+    [CDAY,      "Number of the day of the event (e.g. '1' or '1st').\n" +
+                `MUST specify \'${CDAY}\' or \'${CDATE}\'.`],
+    [CMONTH,    "Month: either number, name or prefix of name.\n" +
+                `MUST specify \'${CMONTH}\' or \'${CDATE}\'.`],
+    [CDATE,     "Date, e.g 'Sat 2 September 2023'.\n" +
+                "Excel converts other dates to this format." +
+                `MUST specify \'${CDATE}\' or \'${CDAY}\' and \'${CMONTH}\'.`],
+    [CEVENT,    "MUST specify the name of the event" +
+                `If \'${CHW}\' isspecified, that field is appended to the \'${CEVENT}\' field`],
+    [CSTART,    "MUST specify start time of the event (e.g. '11:00', '11.00' or '1000')"],
+    [CEND,      "OPTION: end time of the event (e.g. '11:00', '11.00' or '1000')\n" +
+                "If not specified, the duration is used"],
+    [CHW,       "OPTION: High water time, appended to the event\n" +
+                "If not be specified, or event does not use, nothing is added."],
+    [CDURATION, "OPTION: duration of the event (e.g. '3' or '2:30')\n" +
+                "If not specified, the default duration is used"],
+    [CCALENDAR, "OPTION: this column allows different calendars\n" +
+                "You can then select which calendar(s) to export"],
+  ]);
 
 
 // Constants
@@ -300,8 +321,9 @@ function renderTable(data) {
   for (let i = 0; i < numColumns; i++) {
     html += '<td><select class="column-select">';
     html += `<option value=empty>...</option>`;
+    let title;
     for (let option of columnValues) {
-      html += `<option value="${option}">${option}</option>`;
+      html += `<option value="${option}" title="${columnTips.get(option)}">${option}</option>`;
     }
     html += '</select></td>';
   }
@@ -700,12 +722,12 @@ function generateICal(data, calendarsToExport) {
       else {
         const mth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
         if (!mth) {
-          bad(`Cannot understand month \"${lineMonth}\"`, lineNum);
+          bad(`Cannot understand month \"${lineMonth}\"`, lineNum, line[columns.get(CEVENT)]);
           continue;
         }
         theMonth = 0 + mth;
         if (theMonth < 1 || theMonth > 12) {
-          bad(`Invalid month ${month} ${lineMonth} ${line[columns.get(CMONTH)]}`, lineNum);
+          bad(`Invalid month ${month} ${lineMonth} ${line[columns.get(CMONTH)]}`, lineNum, line[columns.get(CEVENT)]);
           continue;
         }
       }
@@ -717,7 +739,7 @@ function generateICal(data, calendarsToExport) {
         theDay = matchDay[1];
       } else {
         //if (!(/^\d\d?$/.test(theDay))) {
-        bad(`Cannot understand day number \"${theDay}\"`, lineNum); 
+        bad(`Cannot understand day number \"${theDay}\"`, lineNum, line[columns.get(CEVENT)]); 
         continue; 
       }
 
@@ -725,7 +747,7 @@ function generateICal(data, calendarsToExport) {
       // parse a date
       const dayMonthYear = parseDate(line[columns.get(CDATE)]);
       if (!dayMonthYear) {
-        bad(`Bad date ${line[columns.get(CDATE)]}`, lineNum);
+        bad(`Bad date ${line[columns.get(CDATE)]}`, lineNum, line[columns.get(CEVENT)]);
         continue;
       }
       //console.log(dayMonthYear);
@@ -749,7 +771,7 @@ function generateICal(data, calendarsToExport) {
 
     // Check that the date is valid
     if (new Date(theYear, theMonth-1, theDay).getMonth() != theMonth-1) {
-      bad(`${theDay}/${theMonth}/${theYear} is not a valid date`, lineNum);
+      bad(`${theDay}/${theMonth}/${theYear} is not a valid date`, lineNum, line[columns.get(CEVENT)]);
       continue;
     }
 
@@ -784,7 +806,7 @@ function generateICal(data, calendarsToExport) {
       theEndMin = '00';
     }   
     else {
-      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, lineNum); 
+      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, lineNum, line[columns.get(CEVENT)]); 
       continue; 
     }
 
@@ -793,20 +815,21 @@ function generateICal(data, calendarsToExport) {
       if (matchTime = line[columns.get(CEND)].match(/^(\d\d?)[:\.]?(\d\d)/)) {
         if ((+theHour > + matchTime[1]) ||
             ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
-          alert(`Event on line ${lineNum} has mismatched start and end times\n` +
+          alert(`Event on line ${lineNum} ${line[columns.get(CEVENT)]? line[columns.get(CEVENT)] : ''} has mismatched start and end times\n` +
                 `${line[columns.get(CSTART)]} and ${line[columns.get(CEND)]}`);
         }
         theEndHour = matchTime[1];
         theEndMin = matchTime[2];
       }
       else {
-        bad(`Cannot understand End time ${line[columns.get(CEND)]}`, lineNum); 
+        bad(`Cannot understand End time ${line[columns.get(CEND)]}`, lineNum, line[columns.get(CEVENT)]); 
         continue; 
       }
     }
 
     // Or may have a Duration
     else if (columns.has(CDURATION) && line[columns.get(CDURATION)]) {
+      console.log(line[columns.get(CEVENT)], line[columns.get(CSTART)], line[columns.get(CDURATION)]);
       if (matchTime = line[columns.get(CDURATION)].match(/^(\d\d?)([:\.]\d\d)?/)) {
         theEndHour = +theHour + +matchTime[1];
         if (matchTime[2]) {
@@ -819,7 +842,7 @@ function generateICal(data, calendarsToExport) {
         }
       }
       else {
-        bad(`Cannot understand the Duration ${line[columns.get(CDURATION)]}`, lineNum); 
+        bad(`Cannot understand the Duration ${line[columns.get(CDURATION)]}`, lineNum, line[columns.get(CEVENT)]); 
         continue; 
       }
     }
@@ -990,9 +1013,13 @@ function openICalWindow(calendarsToExport, iCal) {
  * Warn about bad record in the spreadsheet
  * @param msg The error message
  * @param lno The number of the line on which the error was found
+ * @param evt The name of the event
  */
-function bad(msg, lno) {
-  if (confirm(`BAD RECORD: ${msg} on line ${lno} so ignoring this line.`)) {
+function bad(msg, lno, evt) {
+  const message = evt ? 
+      `BAD RECORD: ${msg} on line ${lno} for event ${evt} so ignoring this line.` :
+      `BAD RECORD: ${msg} on line ${lno} so ignoring this line.` ;
+  if (confirm(message)) {
     return;
   } else {
     alert("You've have cancelled the run");
@@ -1013,11 +1040,20 @@ TODO Bugs and possible improvements.
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
    Probably, don't bother as we now let user bail out early.
 2. TODO Improve placement of select-box components?
+3. TODO Handle Excel times
 
 From Robert 10/9/23
+
 It would be good to have a description on what the dropdowns are looking for, and what happens if they're not selected. For example:If a field in the dropdowns isn't used, what happens? For example: End; Duration and Calendar. Does it assume something for these?
+  ADDED tooltips with brief explanation, including whether MUST or OPTION and what happens if option not sepecified.
+  IMPROVED descriptions of columns, and what happens in optional column is not chosen.
 
 Day, Month and Date dropdowns. Not clear what Day needs (date number or day of week), and whether all are needed. 
   FIXED: Changed 'Day' to 'Day no.'. Prevented selection of Date and Day+Month.
+
+Other
+  ADDED a Default Duration box.
+  CHANGED Year box to Default Year.
+  ADDED tooltips to all initial components, i.e. the drop zone, the Choose File button, Default Year, Default Duration, Events Prefix
 
 */
