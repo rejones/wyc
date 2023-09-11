@@ -32,7 +32,7 @@ const MONTHS_PREFIX_LEN = 3;
  *  Invariant: mappings are unique, i.e. no two keys may have the same value
  */
 const columns = new Map();
-const CDAY = 'Day';
+const CDAY = 'Day no.';
 const CMONTH = 'Month';
 const CDATE = 'Date';
 const CHW = 'HW';
@@ -766,54 +766,9 @@ function generateICal(data, calendarsToExport) {
     // Must have a Start time
     let matchTime;
     if (matchTime = line[columns.get(CSTART)].match(/^(\d\d?)[:\.]?(\d\d)/)) {
-      theHour = matchTime[1];
+      theHour = matchTime[1].padStart(2, '0');
       theMin = matchTime[2];
-
-      // May have an End time
-      if (columns.has(CEND) && 
-          (matchTime = line[columns.get(CEND)].match(/^(\d\d?)[:\.]?(\d\d)/))) {
-          theEndHour = matchTime[1].padStart(2, '0');
-          theEndMin = matchTime[2];
-      }
-
-      // Or may have a Duration
-      else if (columns.has(CDURATION) &&
-                 line[columns.get(CDURATION)] &&
-                 (matchTime = line[columns.get(CDURATION)].match(/^(\d\d?)([:\.]\d\d)?/))) {
-          theEndHour = +theHour + +matchTime[1];
-          if (matchTime[2]) {
-            matchTime[2] = matchTime[2].match(/\d\d/);
-          }
-          theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
-          while (theEndMin > 60) {
-            theEndHour = +theEndHour + 1;
-            theEndMin -= 60;
-          }
-          theEndHour = String(theEndHour).padStart(2, '0');
-          theEndMin = String(theEndMin).padStart(2, '0');
-      }
-
-      else {
-        // assume more than one race if event string includes 
-        // more than one separate number, and allow an extra hour 
-        theEndHour = +theHour + (/\d\D+\d/.test(theEvent) ? DEFAULT_DURATION_HOUR + 1 : DEFAULT_DURATION_HOUR);
-        theEndMin = +theMin + DEFAULT_DURATION_MIN;
-        while (theEndMin > 60) {
-          theEndHour = +theEndHour + 1;
-          theEndMin -= 60;
-        }
-        //console.log('times', theHour, theMin, theEndHour);
-        if (theEndHour > 24) {
-          alert(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`);
-          theEndHour = '23';
-          theEndMin = '59';
-        }
-        theEndHour = String(theEndHour).padStart(2, '0');
-        theEndMin = String(theEndMin).padStart(2, '0');
-      }
-      theHour = theHour.padStart(2, '0'); 
     }
-
     else if (line[columns.get(CSTART)].match(/TBA|TBC|-/i) || 
               line[columns.get(CSTART)] === '') {
       theHour = TBAhour;
@@ -822,18 +777,74 @@ function generateICal(data, calendarsToExport) {
       theEndMin = '00';
       theEvent = theEvent + TBAstring;
     }
-
     else if (line[columns.get(CSTART)].match(/N\/?A/i)) {
       theHour = NAhour;
       theMin = '00';
       theEndHour = NAend_hour;
       theEndMin = '00';
-    }
-   
+    }   
     else {
       bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, lineNum); 
       continue; 
     }
+
+    // May have an End time
+    if (columns.has(CEND) && line[columns.get(CEND)]) {
+      if (matchTime = line[columns.get(CEND)].match(/^(\d\d?)[:\.]?(\d\d)/)) {
+        if ((+theHour > + matchTime[1]) ||
+            ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
+          alert(`Event on line ${lineNum} has mismatched start and end times\n` +
+                `${line[columns.get(CSTART)]} and ${line[columns.get(CEND)]}`);
+        }
+        theEndHour = matchTime[1];
+        theEndMin = matchTime[2];
+      }
+      else {
+        bad(`Cannot understand End time ${line[columns.get(CEND)]}`, lineNum); 
+        continue; 
+      }
+    }
+
+    // Or may have a Duration
+    else if (columns.has(CDURATION) && line[columns.get(CDURATION)]) {
+      if (matchTime = line[columns.get(CDURATION)].match(/^(\d\d?)([:\.]\d\d)?/)) {
+        theEndHour = +theHour + +matchTime[1];
+        if (matchTime[2]) {
+          matchTime[2] = matchTime[2].match(/\d\d/);
+        }
+        theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
+        while (theEndMin > 60) {
+          theEndHour = +theEndHour + 1;
+          theEndMin -= 60;
+        }
+      }
+      else {
+        bad(`Cannot understand the Duration ${line[columns.get(CDURATION)]}`, lineNum); 
+        continue; 
+      }
+    }
+
+    else {
+      // assume more than one race if event string includes 
+      // more than one separate number, and allow an extra hour 
+      theEndHour = +theHour + (/\d\D+\d/.test(theEvent) ? DEFAULT_DURATION_HOUR + 1 : DEFAULT_DURATION_HOUR);
+      theEndMin = +theMin + DEFAULT_DURATION_MIN;
+    }
+
+    // Fix / warn about out of range times
+    while (theEndMin > 60) {
+      theEndHour = +theEndHour + 1;
+      theEndMin -= 60;
+    }
+    //console.log('times', theHour, theMin, theEndHour);
+    if (theEndHour > 24) {
+      alert(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`);
+      theEndHour = '23';
+      theEndMin = '59';
+    }
+    theEndHour = String(theEndHour).padStart(2, '0');
+    theEndMin = String(theEndMin).padStart(2, '0');
+
 
     // Get highwater time
     const highwater = columns.has(CHW) ? line[columns.get(CHW)] : '';
@@ -1002,4 +1013,11 @@ TODO Bugs and possible improvements.
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
    Probably, don't bother as we now let user bail out early.
 2. TODO Improve placement of select-box components?
+
+From Robert 10/9/23
+It would be good to have a description on what the dropdowns are looking for, and what happens if they're not selected. For example:If a field in the dropdowns isn't used, what happens? For example: End; Duration and Calendar. Does it assume something for these?
+
+Day, Month and Date dropdowns. Not clear what Day needs (date number or day of week), and whether all are needed. 
+  FIXED: Changed 'Day' to 'Day no.'. Prevented selection of Date and Day+Month.
+
 */

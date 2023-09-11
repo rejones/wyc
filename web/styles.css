@@ -136,6 +136,11 @@ label {
   font-size: inherit;
   max-width: 25vw;
 }
+#duration {
+  color: blue;
+  font-size: inherit;
+  max-width: 5vw;
+}
 
 /* The spreadsheet */
 .sheet-group {

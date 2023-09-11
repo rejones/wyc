@@ -58,12 +58,16 @@
 </p>
 <p>
   You may also wish to select the calendar year for your calendar
-  from the <span class="instr-box">Select Year</span> drop-down list on the right.
+  from the <span class="instr-box">Select Year</span> drop-down list on the left.
   The default is the current year.
 </p>
 <p>
+  Set default duration of events with <span class="instr-box">Duration</span> box.
+  Times may be hours (e.g. "2") or hours and minutes (e.g. "0:45" or "0.45").
+</p>
+<p>
   If you want all calendar entries to use a common prefix (such as "WYC"),
-  enter it in the <span class="instr-box">Events Prefix</span> box.
+  enter it in the <span class="instr-box">Events Prefix</span> box on the right.
 </p>
 
 <h3>3. Selecting columns for export</h3>
@@ -76,14 +80,19 @@
 <h4>Mandatory columns</h4>
 <ol>
   <li>The date of the events must be specified by selecting<br>
-      EITHER a <strong>Day</strong> number column <i>and</i>
-      a <strong>Month</strong> column,<br>
-      OR a <strong>Date</strong> column.<br>
-      If Days are specified, the Day number column may contain either
-      cardinal (e.g. "6") or ordinal (e.g. "6th") numbers.<br>
-      If Months are specified, the Month column may contain either cardinal numbers
-      (e.g. "6), or month name or prefix (e.g. "June" or "Jun").<br>
-      If a Date is specified, most Excel formats should work
+      <ul>
+      <li>EITHER a <strong>Day no.</strong> (number) column <i>and</i>
+      a <strong>Month</strong> column,</li>
+      <li>OR a <strong>Date</strong> column.</li>
+      </ul>
+      <em>xl2cal</em> will not allow  a <strong>Date</strong> column to be
+      selected if a <strong>Day no.</strong> or a <strong>Month</strong> column
+      are, and vice-versa.<br>
+      If days are specified, the <strong>Day no.</strong> column may contain <i>either</i>
+      cardinal (e.g. "6") <i>or</i> ordinal (e.g. "6th") numbers.<br>
+      If months are specified, the <strong>Month</strong> column may contain either cardinal numbers
+      (e.g. "6), or month names or prefixes (e.g. "June" or "Jun").<br>
+      If a <strong>Date</strong> is specified, most Excel formats should work
       (e.g. "Saturday 1 July", "1/6/2023", etc).</li>
   <li>A <strong>Start</strong> column. 
       Entries in the start column should usually be times using a 24-hour clock. 
@@ -95,14 +104,23 @@
 </ol>
 
 <h4>Optional columns</h4>
+These columns are optional and do not need to be selected.
 <ul>
-  <li>A high-water (<b>HW</b>) column. 
-      An entry in this column (e.g. "1500"), if any, will be appended to the
-      entry in the Event column (e.g. "Race 1") to give e.g. ("Race 1, HW=1500").
+  <li>A high-water (<b>HW</b>) column.<br> 
+      If this column is specified,
+      any entry in this column (e.g. "1500") will be appended to the
+      entry in the <strong>Event</strong> column (e.g. "Race 1" becomes "Race 1, HW=1500").
       Actually, this entry can be anything - it does not need to be high-water.</li>
-  <li>An <b>End</b> or <b>Duration</b> column. If neither is provided, events are given a
-      default duration.</li>
-  <li>A <b>Calendar</b> column.
+  <li>An <b>End</b> column.<br> 
+      If this column is specified, any entry in this column will be used for the
+      end time of an event. 
+      Otherwise, the end time will be the start time plus the duration.</li>
+  <li>A <b>Duration</b> column.<br>
+      If this column is specified, any entry in this column will be used for the
+      duration of an event.
+      Otherwise, the event will be given the default duration from the 
+      <span class="instr-box">Duration</span> box.</li>
+  <li>A <b>Calendar</b> column.<br>
       This is intended to allow separate calendars to be generated from a
       single spreadsheet,
       by tagging event rows in the spreadsheet with the name of the
@@ -110,7 +128,7 @@
       Before exporting an iCalendar file, the tool will ask which calendars it
       should generate entries for.
       If no Calendar column is specified, or if no calendars are selected for
-      export, the iCalendar file will contain entries for all events.</li>
+      export, the iCalendar file output will contain entries for all events.</li>
 </ul>
 
 <h3>4. Selecting the calendars to export</h3>
