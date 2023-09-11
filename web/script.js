@@ -32,13 +32,22 @@ const MONTHS_PREFIX_LEN = 3;
  *  Invariant: mappings are unique, i.e. no two keys may have the same value
  */
 const columns = new Map();
-const columnValues = ['Day', 'Month', 'Date', 'HW', 'Start', 'End', 'Duration', 'Event', 'Calendar'];
+const CDAY = 'Day';
+const CMONTH = 'Month';
+const CDATE = 'Date';
+const CHW = 'HW';
+const CSTART = 'Start';
+const CEND = 'End';
+const CDURATION = 'Duration';
+const CEVENT = 'Event';
+const CCALENDAR = 'Calendar';
+const columnValues = [CDAY, CMONTH, CDATE, CHW, CSTART, CEND, CDURATION, CEVENT, CCALENDAR];
 
 
 // Constants
 const VERSION = '2.0'; // for iCalendar
-const DURATION = 2;    // hours for a single race 
-const H = 'H';         // needed for the DURATION value
+const DEFAULT_DURATION = 2;    // hours for a single race 
+const H = 'H';         // needed for the DEFAULT_DURATION value
 const ADVANCE = 2;     // 2 hours warning
 
 // To Be Announced times
@@ -346,9 +355,9 @@ function renderTable(data) {
       //Enable export button once required columns are chosen
       const exportBtn = document.getElementById('export-button');
       exportBtn.disabled = !( 
-                   ((columns.has('Day') && columns.has('Month')) || columns.has('Date'))
-                    && columns.has('Start')
-                    && columns.has('Event')
+                   ((columns.has(CDAY) && columns.has(CMONTH)) || columns.has(CDATE))
+                    && columns.has(CSTART)
+                    && columns.has(CEVENT)
                             );
     });
   });
@@ -390,9 +399,9 @@ function getKeyByValue(map, value) {
  */
 function findCalendars() {
   const calendarsFound = new Set();
-  if (columns.has('Calendar')) {
-    const startCol = columns.get('Start');
-    const calCol = columns.get('Calendar');
+  if (columns.has(CCALENDAR)) {
+    const startCol = columns.get(CSTART);
+    const calCol = columns.get(CCALENDAR);
     const pattern = /^\d{4}$|^\d{2}:\d{2}$/; // looks like a Start time
     for (let row of theData) {
       const start = row[startCol];
@@ -422,7 +431,7 @@ function cancelSelect() {
  */
 function exportSelect() {
   const calendarsToExport = new Set();
-  if (columns.has('Calendar')) {
+  if (columns.has(CCALENDAR)) {
     const checkedCalendars = document.querySelectorAll('input[name=calendar-checkbox]:checked');
     checkedCalendars.forEach(function(cal) {
       calendarsToExport.add(cal.value);
@@ -460,7 +469,7 @@ function exportCalendar() {
 
 /**
  * Popup window to select calendars to export
- * @param calendarsFound - The calendars found in the 'Calendar' column
+ * @param calendarsFound - The calendars found in the CCALENDAR column
  */
 function selectCalendars(calendarsFound) {
   if (calendarsFound.size > 0) {
@@ -592,7 +601,7 @@ function parseDate(rowDate) {
  */
 function generateICal(data, calendarsToExport) {
   const DTSTAMP = createDTSTAMP();
-  const startCol = columns.get('Start');
+  const startCol = columns.get(CSTART);
   const startPattern = /^\d{4}$|^\d{2}:\d{2}$/;
 
   const theDefaultYear = document.getElementById('year-dropdown').value;
@@ -622,8 +631,8 @@ function generateICal(data, calendarsToExport) {
     }
 
     // Skip rows for unwanted calendars
-    if (columns.has('Calendar')) {
-       const theCal = line[columns.get('Calendar')];
+    if (columns.has(CCALENDAR)) {
+       const theCal = line[columns.get(CCALENDAR)];
        if (!calendarsToExport.has(theCal)) {
          continue;
        }
@@ -632,12 +641,12 @@ function generateICal(data, calendarsToExport) {
     // Get the day and month
     let theDay, theMonth, theYear;
 
-    if (columns.has('Day') && columns.has('Month')) {
+    if (columns.has(CDAY) && columns.has(CMONTH)) {
       theYear = theDefaultYear;
-      const lineMonth = line[columns.get('Month')];
+      const lineMonth = line[columns.get(CMONTH)];
       // allow either month number or string
       if (/^\d\d?$/.test(lineMonth)) {
-        theMonth =  line[columns.get('Month')];
+        theMonth =  line[columns.get(CMONTH)];
       }
       else {
         const mth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
@@ -647,15 +656,15 @@ function generateICal(data, calendarsToExport) {
         }
         theMonth = 0 + mth;
         if (theMonth < 1 || theMonth > 12) {
-          bad(`Invalid month ${month} ${lineMonth} ${line[columns.get('Month')]}`, lineNum);
+          bad(`Invalid month ${month} ${lineMonth} ${line[columns.get(CMONTH)]}`, lineNum);
           continue;
         }
       }
 
       // get the day number
-      //theDay = line[columns.get('Day')];
+      //theDay = line[columns.get(CDAY)];
       let matchDay;
-      if (matchDay = line[columns.get('Day')].match(/^(\d\d?)(st|nd|rd|th)?/i)) {
+      if (matchDay = line[columns.get(CDAY)].match(/^(\d\d?)(st|nd|rd|th)?/i)) {
         theDay = matchDay[1];
       } else {
         //if (!(/^\d\d?$/.test(theDay))) {
@@ -663,11 +672,11 @@ function generateICal(data, calendarsToExport) {
         continue; 
       }
 
-    } else if (columns.has('Date')) {
+    } else if (columns.has(CDATE)) {
       // parse a date
-      const dayMonthYear = parseDate(line[columns.get('Date')]);
+      const dayMonthYear = parseDate(line[columns.get(CDATE)]);
       if (!dayMonthYear) {
-        bad(`Bad date ${line[columns.get('Date')]}`, lineNum);
+        bad(`Bad date ${line[columns.get(CDATE)]}`, lineNum);
         continue;
       }
       //console.log(dayMonthYear);
@@ -696,7 +705,7 @@ function generateICal(data, calendarsToExport) {
     }
 
     // Get the event
-    let theEvent = line[columns.get('Event')];
+    let theEvent = line[columns.get(CEVENT)];
 
     // Get the start and end times
     // times before 1000 are sometimes recorded with only 3 digits
@@ -707,20 +716,20 @@ function generateICal(data, calendarsToExport) {
 
     // Must have a Start time
     let matchTime;
-    if (matchTime = line[columns.get('Start')].match(/^(\d\d?)[:\.]?(\d\d)/)) {
+    if (matchTime = line[columns.get(CSTART)].match(/^(\d\d?)[:\.]?(\d\d)/)) {
       theHour = matchTime[1];
       theMin = matchTime[2];
 
       // May have an End time
-      if (columns.has('End') && 
-          (matchTime = line[columns.get('End')].match(/^(\d\d?)[:\.]?(\d\d)/))) {
+      if (columns.has(CEND) && 
+          (matchTime = line[columns.get(CEND)].match(/^(\d\d?)[:\.]?(\d\d)/))) {
           theEndHour = matchTime[1].padStart(2, '0');
           theEndMin = matchTime[2];
       }
 
       // Or may have a Duration
-      else if (columns.has('Duration') &&
-                 (matchTime = line[columns.get('Duration')].match(/^(\d\d?)[:\.]?(\d\d)/))) {
+      else if (columns.has(CDURATION) &&
+                 (matchTime = line[columns.get(CDURATION)].match(/^(\d\d?)[:\.]?(\d\d)/))) {
           theEndHour = +theHour + +matchTime[1];
           theEndMin = +theMin + +matchTime[2];
           while (theEndMin > 60) {
@@ -734,7 +743,7 @@ function generateICal(data, calendarsToExport) {
       else {
         // assume more than one race if event string includes 
         // more than one separate number, and allow an extra hour 
-        theEndHour = +theHour + (/\d\D+\d/.test(theEvent) ? DURATION + 1 : DURATION);
+        theEndHour = +theHour + (/\d\D+\d/.test(theEvent) ? DEFAULT_DURATION + 1 : DEFAULT_DURATION);
         theEndMin = theMin;
         //console.log('times', theHour, theMin, theEndHour);
         if (theEndHour > 24) {
@@ -748,8 +757,8 @@ function generateICal(data, calendarsToExport) {
       theHour = theHour.padStart(2, '0'); 
     }
 
-    else if (line[columns.get('Start')].match(/TBA|TBC|-/i) || 
-              line[columns.get('Start')] === '') {
+    else if (line[columns.get(CSTART)].match(/TBA|TBC|-/i) || 
+              line[columns.get(CSTART)] === '') {
       theHour = TBAhour;
       theMin = '00';
       theEndHour = TBAend_hour;
@@ -757,7 +766,7 @@ function generateICal(data, calendarsToExport) {
       theEvent = theEvent + TBAstring;
     }
 
-    else if (line[columns.get('Start')].match(/N\/?A/i)) {
+    else if (line[columns.get(CSTART)].match(/N\/?A/i)) {
       theHour = NAhour;
       theMin = '00';
       theEndHour = NAend_hour;
@@ -765,12 +774,12 @@ function generateICal(data, calendarsToExport) {
     }
    
     else {
-      bad(`Cannot understand Start time ${line[columns.get('Start')]}`, lineNum); 
+      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, lineNum); 
       continue; 
     }
 
     // Get highwater time
-    const highwater = columns.has('HW') ? line[columns.get('HW')] : '';
+    const highwater = columns.has(CHW) ? line[columns.get(CHW)] : '';
    
     // Print the record
     text += printICAL(DTSTAMP, theDay, theMonth, theYear, theHour, theMin, theEndHour, theEndMin, thePrefix, theEvent, highwater);
