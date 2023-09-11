@@ -340,13 +340,30 @@ function renderTable(data) {
       const selectedOption = event.target.value;
       if (selectedOption != 'empty') { 
         columns.set(selectedOption, index);
+        // Disallow Day+Month and Date
+        if (selectedOption === CDATE) {
+          columns.delete(CDAY);
+          columns.delete(CMONTH);
+        }
+        else if ((selectedOption === CDAY) || (selectedOption === CMONTH)) {
+          columns.delete(CDATE);
+        }
       }
       
       // Clear any other dropdowns with the same value
+      // Disallow columns with Day+Month and Date
       dropdowns.forEach((dd, i) => {
         if (i != index) {
           let val = dd.value;
           if (columns.get(val) != i) {
+            dd.value = 'empty';
+          }
+          if ((selectedOption === CDATE) &&
+              ((dd.value === CDAY) || (dd.value === CMONTH))) {
+            dd.value = 'empty';
+          }
+          else if (((selectedOption === CDAY) || (selectedOption === CMONTH)) &&
+                   (dd.value === CDATE)) {
             dd.value = 'empty';
           }
         }
