@@ -46,7 +46,6 @@ const columnValues = [CDAY, CMONTH, CDATE, CHW, CSTART, CEND, CDURATION, CEVENT,
 
 // Constants
 const VERSION = '2.0'; // for iCalendar
-const DEFAULT_DURATION = 2;    // hours for a single race 
 const H = 'H';         // needed for the DEFAULT_DURATION value
 const ADVANCE = 2;     // 2 hours warning
 
@@ -60,6 +59,13 @@ const NAend_hour = '17';
 
 const T = 'T';
 const Z = 'Z';      // 'Z' means UTC rather than local time
+
+// Default durations
+const DEFAULT_DURATION = '2:00';    // hours for a single race 
+const DEFAULT_DEFAULT_DURATION_HOUR = 2;
+const DEFAULT_DEFAULT_DURATION_MIN = 0;
+let DEFAULT_DURATION_HOUR = DEFAULT_DEFAULT_DURATION_HOUR;
+let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 
 // Spreadsheet data
 let theSheet = 0;                        // The sheet to read
@@ -85,7 +91,7 @@ class AbortError extends Error {
 // Capture all otherwise uncaught errors
 window.onerror = function (error, source, lineno, colno, error) {
   if (!(error instanceof AbortError))
-    alert("Unexpected error!\n" +
+    alert(`Unexpected error at line ${lineno}!\n` +
         error +
         "\nPlease report");
 }
@@ -116,6 +122,30 @@ window.addEventListener('DOMContentLoaded', () => {
     option.selected = year == currentYear;
     yearDropdown.appendChild(option);
   }
+
+  const durationBox = document.getElementById('duration');
+  durationBox.addEventListener('change', () => {
+    duration = durationBox.value;
+    let matchTime;
+    if (duration) {
+      matchTime = duration.match(/^(\d\d?)([:\.]\d\d)?/);
+    }
+    if (matchTime) {
+      DEFAULT_DURATION_HOUR = +matchTime[1];
+      if (matchTime[2]) {
+        matchTime[2] = matchTime[2].match(/\d\d/);
+      }
+      DEFAULT_DURATION_MIN =  matchTime[2] ? +matchTime[2] : 0;
+    } 
+    else {
+      durationBox.value = DEFAULT_DURATION;
+    }
+    if ((DEFAULT_DURATION_HOUR > 23) || (DEFAULT_DURATION_MIN > 59)) {
+      durationBox.value = DEFAULT_DURATION;
+      DEFAULT_DURATION_HOUR = DEFAULT_DEFAULT_DURATION_HOUR;
+      DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
+    }
+  });
 });
 
 
@@ -557,7 +587,7 @@ function isMonth(month) {
  * @return [day number, month], e.g. [12, 'March']
  */
 function parseDate(rowDate) {
-  console.log('parseDate', rowDate, typeof rowDate);
+  //console.log('parseDate', rowDate, typeof rowDate);
   if (!rowDate)
     return null;
 
@@ -622,6 +652,8 @@ function generateICal(data, calendarsToExport) {
   const startPattern = /^\d{4}$|^\d{2}:\d{2}$/;
 
   const theDefaultYear = document.getElementById('year-dropdown').value;
+  const DEFAULT_DURATION = +document.getElementById('duration').value;
+  //console.log('DEFAULT_DURATION', DEFAULT_DURATION);
   let thePrefix = document.getElementById('event-prefix').value;
 
   // Print header for calendars
@@ -746,9 +778,13 @@ function generateICal(data, calendarsToExport) {
 
       // Or may have a Duration
       else if (columns.has(CDURATION) &&
-                 (matchTime = line[columns.get(CDURATION)].match(/^(\d\d?)[:\.]?(\d\d)/))) {
+                 line[columns.get(CDURATION)] &&
+                 (matchTime = line[columns.get(CDURATION)].match(/^(\d\d?)([:\.]\d\d)?/))) {
           theEndHour = +theHour + +matchTime[1];
-          theEndMin = +theMin + +matchTime[2];
+          if (matchTime[2]) {
+            matchTime[2] = matchTime[2].match(/\d\d/);
+          }
+          theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
           while (theEndMin > 60) {
             theEndHour = +theEndHour + 1;
             theEndMin -= 60;
@@ -760,8 +796,12 @@ function generateICal(data, calendarsToExport) {
       else {
         // assume more than one race if event string includes 
         // more than one separate number, and allow an extra hour 
-        theEndHour = +theHour + (/\d\D+\d/.test(theEvent) ? DEFAULT_DURATION + 1 : DEFAULT_DURATION);
-        theEndMin = theMin;
+        theEndHour = +theHour + (/\d\D+\d/.test(theEvent) ? DEFAULT_DURATION_HOUR + 1 : DEFAULT_DURATION_HOUR);
+        theEndMin = +theMin + DEFAULT_DURATION_MIN;
+        while (theEndMin > 60) {
+          theEndHour = +theEndHour + 1;
+          theEndMin -= 60;
+        }
         //console.log('times', theHour, theMin, theEndHour);
         if (theEndHour > 24) {
           alert(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`);
