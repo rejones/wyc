@@ -19,6 +19,7 @@
     </p>
 
 <h3>1. Creating a spreadsheet for your schedule</h3>
+
 <p>
   <em>xl2cal</em> assumes that you have created your schedule 
   in an Excel spreadsheet, with filename extension <code>.xlsx</code>.
@@ -41,6 +42,7 @@
 </p>
 
 <h3>2. Loading your spreadsheet into xl2cal</h3>
+
 <p>
   Load your spreadsheet into <em>xl2cal</em> by either: 
   <ul>
@@ -71,6 +73,7 @@
 </p>
 
 <h3>3. Selecting columns for export</h3>
+
 <p>
   The cells of your spreadsheet will then be loaded into a table.
   Cells in the first row of the table are column heading buttons.
@@ -78,53 +81,64 @@
   Some columns are mandatory; others are optional.
 
 <h4>Mandatory columns</h4>
+
 <ol>
   <li>The date of the events must be specified by selecting<br>
       <ul>
-      <li>EITHER a <strong>Day no.</strong> (number) column <i>and</i>
-      a <strong>Month</strong> column,</li>
-      <li>OR a <strong>Date</strong> column.</li>
+        <li>EITHER a <strong>Day no.</strong> (number) column <i>and</i>
+        a <strong>Month</strong> column,</li>
+        <li>OR a <strong>Date</strong> column.</li>
       </ul>
       <em>xl2cal</em> will not allow  a <strong>Date</strong> column to be
       selected if a <strong>Day no.</strong> or a <strong>Month</strong> column
       are, and vice-versa.<br>
+
       If days are specified, the <strong>Day no.</strong> column may contain <i>either</i>
       cardinal (e.g. "6") <i>or</i> ordinal (e.g. "6th") numbers.<br>
+
       If months are specified, the <strong>Month</strong> column may contain either cardinal numbers
       (e.g. "6), or month names or prefixes (e.g. "June" or "Jun").<br>
       If a <strong>Date</strong> is specified, most Excel formats should work
-      (e.g. "Saturday 1 July", "1/6/2023", etc).</li>
+      (e.g. "Saturday 1 July", "1/6/2023", etc).
+  </li>
+
   <li>A <strong>Start</strong> column. 
       Entries in the start column should be times using a 24-hour clock.<br> 
       Acceptable entries include "1400" and "14:00". 
+      Excel Time format can be used here (see under <a href="#errors">Errors</a>
+      below).
       However, "TBA", "TBC", "NA" and "N/A" are also accepted.<br>
-      <i>DO NOT USE EXCEL TIME FORMATS.</i><br>
       Lines without valid Start times (such as headers, blank lines) are
-      ignored.</li>
+      ignored.
+  </li>
   <li>An <strong>Event</strong> column, describing the event.</li>
 </ol>
 
 <h4>Optional columns</h4>
+
 These columns are optional and do not need to be selected.
 <ul>
   <li>A high-water (<b>HW</b>) column.<br> 
       If this column is specified,
       any entry in this column (e.g. "1500") will be appended to the
-      entry in the <strong>Event</strong> column (e.g. "Race 1" becomes "Race 1, HW=1500").</li>
+      entry in the <strong>Event</strong> column (e.g. "Race 1" becomes "Race 1, HW=1500").
+  </li>
   <li>An <b>End</b> column.<br> 
       If this column is specified, any entry in this column will be used for the
       end time of an event. 
       Otherwise, the end time will be the start time plus the duration.<br>
       Entries in the start column should be times using a 24-hour clock.<br> 
-      Acceptable entries include "1400" and "14:00".<br> 
-      <i>DO NOT USE EXCEL TIME FORMATS.</i><li>
+      Acceptable entries include "1400" and "14:00",
+      and Excel Time format (see <a href="#errors">Errors</a> below).
+  </li>
   <li>A <b>Duration</b> column.<br>
       If this column is specified, any entry in this column will be used for the
       duration of an event.
       Otherwise, the event will be given the default duration from the 
       <span class="instr-box">Duration</span> box.
-      Acceptable entries include "2" and "2:30".<br> 
-      <i>DO NOT USE EXCEL TIME FORMATS.</i><li>
+      Acceptable entries include "2", "2:30" and Excel Time format
+      (see <a href="#errors">Errors</a> below).
+  </li>
   <li>A <b>Calendar</b> column.<br>
       This is intended to allow separate calendars to be generated from a
       single spreadsheet,
@@ -136,7 +150,44 @@ These columns are optional and do not need to be selected.
       export, the iCalendar file output will contain entries for all events.</li>
 </ul>
 
+<h4><a name="errors">Errors</a></h4>
+
+<p>
+  Take care that dates and times are properly entered in your spreadsheet.
+  In particular, 
+  <ul>
+  <li>If you specify a <strong>Date</strong> column, ensure that there are no missing
+      spaces between words, no misspelt words.
+  </li>
+  <li>Be careful with Excel Date and Time formats.<br>
+      Excel usually represents these as 
+      the number of days since 1 January 1900 (the integral part)
+      and the fraction of 24 hours (the fractional part).
+      However, one Excel preference uses 1904 rather than 1900;
+      avoid the 1904 format.<br>
+      If you use a Date or Time format, ensure that it is for the year you want:
+      Excel is quite good at using a year in the early 1900s instead!
+  </li>
+  </ul>
+</p>
+<p>
+  <em>xl2cal</em> will check each row in your spreadsheet.
+  Any row that does not provide a valid date (however specified)
+  or without a valid Start time will be ignored,
+  with a warning.
+  This allows you to have blank lines or other non-event rows in your
+  spreadsheet.
+  You have two choices if a warning pops up for a row with invalid data.
+  <ul>
+    <li>To continue generating your iCalendar without this row,
+        click <span class="instr-box">OK</span>.</li>
+    <li>to cancel generating your iCalendar,
+        click <span class="instr-box">Cancel</span>.</li>
+  </ul>
+</p>
+
 <h3>4. Selecting the calendars to export</h3>
+
 <p>
   Click the <span class="instr-button">Export</span> button to start to generate your calendar in 
   iCalendar format.
@@ -157,41 +208,9 @@ These columns are optional and do not need to be selected.
   generating your calendar.
 </p>
 
-<h4>Errors</h4>
-<p>
-  Take care that dates and times are properly entered in your spreadsheet.
-  In particular, 
-  <ul>
-  <li>If you specify a <strong>Date</strong> column, ensure that there are no missing
-      spaces between words, no misspelt words.</li>
-  <li>Be careful with Excel formats. Excel exports many of these formats as
-      numbers, making it difficult to distinguish a date from time.
-      <em>xl2cal</em> will interpret any large integer as a date 
-      (Excel dates are the number of days since 1 January 1900), so the Date
-      format is acceptable for the <strong>Date</strong> column.
-      However, do not use Excel's special formats for 
-      <strong>Start time</strong>,
-      <strong>End time</strong> or
-      <strong>Duration</strong>.</li>
-  </ul>
-</p>
-<p>
-  <em>xl2cal</em> will check each row in your spreadsheet.
-  Any row that does not provide a valid date (however specified)
-  or without a valid Start time will be ignored,
-  with a warning.
-  This allows you to have blank lines or other non-event rows in your
-  spreadsheet.
-  You have two choices if a warning pops up for a row with invalid data.
-  <ul>
-    <li>To continue generating your iCalendar without this row,
-        click <span class="instr-box">OK</span>.</li>
-    <li>to cancel generating your iCalendar,
-        click <span class="instr-box">Cancel</span>.</li>
-  </ul>
-</p>
 
 <h3>5. Download the schedule as an iCalendar file</h3>
+
 <p>
   When the iCalendar has been generated,
   a window will appear inviting you to download the calendar.

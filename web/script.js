@@ -340,16 +340,20 @@ function renderTable(data) {
       // Convert cell value to string
       let cellValue = cell == undefined ? '' : String(cell);
   
+      // Excel serial dates and times are represented as a number
+      // The integral part represents the date by the number of days since 1 Jan 1900;
+      // the fractional part represents the time as a fraction of 24 hours
+
       // Check if the cell format is "hh:mm"
       if (typeof cell === 'number') {
         if (cell % 1 !== 0) { 
           // Assume this is a time
-          const hours = Math.floor(cell * 24);
-          const minutes = Math.round(((cell * 24 ) % 1) * 60);
+          const excelTime = cell % 1; 
+          const hours = Math.floor(excelTime * 24);
+          const minutes = Math.round(((excelTime * 24 ) % 1) * 60);
           cellValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         }
-        else if (cell > 43481) { // days between 1 Jan 1900 and 1 Jan 2020
-          // Assume that this is a date
+        else if (cell > 43481) { // ie a date after 1 Jan 2020
           const date = new Date(Date.UTC(0, 0, cell-1));
           if (!isNaN(date.getFullYear())) {
             cellValue = date.toDateString();
@@ -836,7 +840,7 @@ function generateICal(data, calendarsToExport) {
           matchTime[2] = matchTime[2].match(/\d\d/);
         }
         theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
-        while (theEndMin > 60) {
+        while (theEndMin >= 60) {
           theEndHour = +theEndHour + 1;
           theEndMin -= 60;
         }
@@ -855,12 +859,12 @@ function generateICal(data, calendarsToExport) {
     }
 
     // Fix / warn about out of range times
-    while (theEndMin > 60) {
+    while (theEndMin >= 60) {
       theEndHour = +theEndHour + 1;
       theEndMin -= 60;
     }
     //console.log('times', theHour, theMin, theEndHour);
-    if (theEndHour > 24) {
+    if (theEndHour >= 24) {
       alert(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`);
       theEndHour = '23';
       theEndMin = '59';
@@ -1039,14 +1043,13 @@ TODO Bugs and possible improvements.
    . isMonth() - cardinal number, or month name or abbreviation
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
    Probably, don't bother as we now let user bail out early.
-2. TODO Improve placement of select-box components?
-3. TODO Handle Excel times
+2. TODO Handle Excel times
 
 From Robert 10/9/23
 
 It would be good to have a description on what the dropdowns are looking for, and what happens if they're not selected. For example:If a field in the dropdowns isn't used, what happens? For example: End; Duration and Calendar. Does it assume something for these?
   ADDED tooltips with brief explanation, including whether MUST or OPTION and what happens if option not sepecified.
-  IMPROVED descriptions of columns, and what happens in optional column is not chosen.
+  IMPROVED descriptions of columns, and what happens if optional column is not chosen.
 
 Day, Month and Date dropdowns. Not clear what Day needs (date number or day of week), and whether all are needed. 
   FIXED: Changed 'Day' to 'Day no.'. Prevented selection of Date and Day+Month.
