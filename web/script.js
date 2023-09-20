@@ -4,11 +4,11 @@
  * Convert WYC racing schedule into .ics format that can be loaded into a calendar.
  * @author Richard Jones
  * @copyright Richard Jones, 2023
- * https://github.com/rejones/wyc
+ * https://github.com/rejones/wyc/web
  */
 
 /** 
- *Month prefixes to numbers
+ * Month prefixes to numbers
  * Month numbers are strings to help with padding
  */
 const months = new Map([
@@ -144,6 +144,7 @@ window.addEventListener('DOMContentLoaded', () => {
     yearDropdown.appendChild(option);
   }
 
+  // Allow user to choose a default duration for an event
   const durationBox = document.getElementById('duration');
   durationBox.addEventListener('change', () => {
     duration = durationBox.value;
@@ -233,9 +234,9 @@ function loadFile(file) {
       renderTable(jsonData);
     } 
     else { 
+      // choose sheet from drop-down list
       replaceSheetGroup();
       addSpreadsheetHeading();
-      // choose sheet from drop-down list
       const select = document.createElement("select");
       select.id = "select-sheet";
 
@@ -396,7 +397,7 @@ function renderTable(data) {
       const selectedOption = event.target.value;
       if (selectedOption != 'empty') { 
         columns.set(selectedOption, index);
-        // Disallow Day+Month and Date
+        // Disallow both Day+Month and Date
         if (selectedOption === CDATE) {
           columns.delete(CDAY);
           columns.delete(CMONTH);
@@ -407,7 +408,7 @@ function renderTable(data) {
       }
       
       // Clear any other dropdowns with the same value
-      // Disallow columns with Day+Month and Date
+      // Disallow both Day+Month and Date columns
       dropdowns.forEach((dd, i) => {
         if (i != index) {
           let val = dd.value;
@@ -452,7 +453,7 @@ function renderTable(data) {
 
 /**
  * Find the (first) key with a specified value in a hashmap 
- * @param map 
+ * @param {Map} map 
  * @param value
  * @return The key or null if value is not present
  */
@@ -580,7 +581,7 @@ function selectCalendars(calendarsFound) {
 
 /** 
  * Generate the DTSTAMP 
- * @return A DTSTAMP for now
+ * @return A DTSTAMP for now (the time this ical was created)
  */
 function createDTSTAMP() {
   const now = new Date();
@@ -595,7 +596,7 @@ function createDTSTAMP() {
 
 /**
  * Is a string a month (or prefix)?
- * @param day The possible month string
+ * @param {String} day The possible month string
  * @return True if so
  */
 function isMonth(month) {
@@ -609,8 +610,9 @@ function isMonth(month) {
 
 /**
  * Parse a day in a format like 'Sunday 12th March' or '12/3/'
- * @param rowDate The date string
- * @return [day number, month], e.g. [12, 'March']
+ * @param rowDate The date
+ * @return [day number, month, year], e.g. [12, 'March', 2023] or
+ *         [day number, month] if no year given
  */
 function parseDate(rowDate) {
   //console.log('parseDate', rowDate, typeof rowDate);
@@ -629,7 +631,6 @@ function parseDate(rowDate) {
       return null;
     }
     //console.log(rowDate, date.getDate(), date.getMonth() + 1, date.getFullYear());
-    //console.log([date.getDate(), date.getMonth() + 1, date.getFullYear()]);
     return [date.getDate().toString(), date.getMonth() + 1, date.getFullYear()].map((e) => {return e.toString()});
   }
   
@@ -641,7 +642,7 @@ function parseDate(rowDate) {
   let dayMonthYear = rowDate.split(delimiterRE)
                      .filter(it => it !== '')              // remove any empty elements
                      .map(it => it.toUpperCase());         // make all upper case
-                     //.filter(it => !isDay(it));             // remove any day names TODO Needs to accept all forms of days
+                     //.filter(it => !isDay(it));          // remove any day names TODO Needs to accept all forms of days
   //console.log('dayMonthYear', dayMonthYear);
   const years = dayMonthYear
                 .filter (it => yearRE.test(it));         // get any year
@@ -650,15 +651,15 @@ function parseDate(rowDate) {
                    .filter(it => !(yearRE.test(it)));   // remove any year
   //console.log('dayMonth', dayMonth);
   const days = dayMonth
-               .filter(it => /^\d+[A-Z]*$/.test(it))   // only day strings 
-               .map(it => it.replace(/[A-Z]*$/,''));   // remove any ordinal characters
+               .filter(it => /^\d+[A-Z]*$/.test(it))    // only day strings 
+               .map(it => it.replace(/[A-Z]*$/,''));    // remove any ordinal characters
   //console.log('days', days);
   //const months = dayMonth
   //               .filter(it => /^[A-Z]+$/.test(it)); 
-  const months = dayMonth.filter(isMonth);             // get any month(s)
+  const months = dayMonth.filter(isMonth);              // get any month(s)
   //console.log('months',months);
   //console.log(days[0], months[0], years[0]);
-  if (!days.length || !months.length)          // must have day and month numbers
+  if (!days.length || !months.length)                   // must have day and month numbers
     return null;  
   return years.length ? 
     [days[0], months[0], years[0]] :
@@ -840,10 +841,6 @@ function generateICal(data, calendarsToExport) {
           matchTime[2] = matchTime[2].match(/\d\d/);
         }
         theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
-        while (theEndMin >= 60) {
-          theEndHour = +theEndHour + 1;
-          theEndMin -= 60;
-        }
       }
       else {
         bad(`Cannot understand the Duration ${line[columns.get(CDURATION)]}`, lineNum, line[columns.get(CEVENT)]); 
@@ -863,7 +860,6 @@ function generateICal(data, calendarsToExport) {
       theEndHour = +theEndHour + 1;
       theEndMin -= 60;
     }
-    //console.log('times', theHour, theMin, theEndHour);
     if (theEndHour >= 24) {
       alert(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`);
       theEndHour = '23';
@@ -922,17 +918,17 @@ CALSCALE:GREGORIAN
 
 /**
  * Print iCalendar entry
- * @param DTSTAMP The DTSTAMP
+ * @param DTSTAMP   The DTSTAMP
  * @param thePrefix The prefix for events
  * @param theDay    The day number
  * @param theMonth  The month number
- * @param theYear  The year
+ * @param theYear   The year
  * @param theStart  The start hour
  * @param theMin    The start minute 
  * @param theEnd    The end hour
  * @param theEndMin The end minute
- * @param theEvent The event name
- * @param theHighwater Other text to add to event (e.g. hig hwater time)
+ * @param theEvent  The event name
+ * @param theHighwater Other text to add to event (e.g. high water time)
  * @return iCalendar entry
  */
 function printICAL (DTSTAMP, theDay, theMonth, theYear, theStart, theMin, 
@@ -1046,14 +1042,11 @@ TODO Bugs and possible improvements.
 2. TODO Handle Excel times
 
 From Robert 10/9/23
-
 It would be good to have a description on what the dropdowns are looking for, and what happens if they're not selected. For example:If a field in the dropdowns isn't used, what happens? For example: End; Duration and Calendar. Does it assume something for these?
   ADDED tooltips with brief explanation, including whether MUST or OPTION and what happens if option not sepecified.
   IMPROVED descriptions of columns, and what happens if optional column is not chosen.
-
 Day, Month and Date dropdowns. Not clear what Day needs (date number or day of week), and whether all are needed. 
   FIXED: Changed 'Day' to 'Day no.'. Prevented selection of Date and Day+Month.
-
 Other
   ADDED a Default Duration box.
   CHANGED Year box to Default Year.
