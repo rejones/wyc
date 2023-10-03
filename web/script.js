@@ -219,7 +219,7 @@ function loadFile(file) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { cellStyles: true, type: 'array' });
+    const workbook = XLSX.read(data, { cellStyles: true, cellDates: true, type: 'array' });
     let sheetName;
 
     if (workbook.SheetNames.length == 1) {
@@ -312,8 +312,12 @@ function addSpreadsheetHeading() {
  */
 function renderTable(data) {
 
+  // display number with 2 digits, prepending `0` if necessary 
+  const f = (n) => n.toString().padStart(2, "0");
+
   const sheetTable = document.getElementById('sheet-table');
-  const numColumns = data.length > 0 ? data[0].length : 0;
+  const numColumns = data.map(row => row.length)
+                     .reduce( (a,b) => Math.max(a,b), 0);
   columns.clear();
   let html = '';
   let newRow;
@@ -341,10 +345,30 @@ function renderTable(data) {
       // Convert cell value to string
       let cellValue = cell == undefined ? '' : String(cell);
   
+      // Unless 'cellStyles: true' is given as an option to XLSX.read(),
       // Excel serial dates and times are represented as a number
       // The integral part represents the date by the number of days since 1 Jan 1900;
       // the fractional part represents the time as a fraction of 24 hours
+      // With  Unless 'cellStyles: true', dates and times are exported as Date objects.
 
+      // Steve Gray spreadsheet has times as decimal numbers, which is weird.
+
+      console.log(typeof cell, cell, cell instanceof Date);
+
+      if (cell instanceof Date) {
+        // Try to tidy incomplete Excel values
+        if (cell.getFullYear() < 1900) {
+          // Spreadsheet didn't specify year
+          cellValue = `${f(cell.getHours())}:${f(cell.getMinutes())}`;
+        }
+      }
+      else if ( (typeof cell === 'number') &&
+                (cell % 1 !== 0) ) { 
+        // Assume this is a time) 
+        const hours = Math.floor(cell);
+      }
+
+      /* Not needed with cellStyles:true
       // Check if the cell format is "hh:mm"
       if (typeof cell === 'number') {
         if (cell % 1 !== 0) { 
@@ -361,6 +385,7 @@ function renderTable(data) {
           }
         }
       }
+      */
           
       //console.log(cellValue);
       html += `<td>${cellValue}</td>`;
@@ -701,8 +726,8 @@ function generateICal(data, calendarsToExport) {
 
     // Discard header and any other unlikely lines
     const start = line[startCol];
-    if ( !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) {
-      console.log(`Ignoring line ${lineNum}: ${line}`);
+    if ( !start || !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) {
+      console.log(`Ignoring line ${lineNum} ${line}: no start time specified`);
       continue;
     }
 
@@ -780,8 +805,13 @@ function generateICal(data, calendarsToExport) {
       continue;
     }
 
-    // Get the event
+    // Get the event. 
+    // Discard any lines with no event.
     let theEvent = line[columns.get(CEVENT)];
+    if ( !theEvent ) {
+      console.log(`Ignoring line ${lineNum} ${line}: no event specified`);
+      continue;
+    }
 
     // Get the start and end times
     // times before 1000 are sometimes recorded with only 3 digits

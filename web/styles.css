@@ -154,6 +154,7 @@ label {
 
 .column-select {
   background-color: LightSkyBlue;
+  min-width: 6em; /* otherwise too narrow to read */
 }
 
 #the-sheet {
