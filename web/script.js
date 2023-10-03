@@ -7,6 +7,10 @@
  * https://github.com/rejones/wyc/web
  */
 
+const dayNames = ['Sun', 'Mon', 'Tues', 'Weds', 'Thurs', 'Fri', 'Sat'];
+const monthNames = ['January','February','March','April','May','June','July','August',
+          'September','October','November','December'];
+
 /** 
  * Month prefixes to numbers
  * Month numbers are strings to help with padding
@@ -346,26 +350,41 @@ function renderTable(data) {
       let cellValue = cell == undefined ? '' : String(cell);
   
       // Unless 'cellStyles: true' is given as an option to XLSX.read(),
-      // Excel serial dates and times are represented as a number
+      // Excel serial dates and times are represented as a real number.
       // The integral part represents the date by the number of days since 1 Jan 1900;
-      // the fractional part represents the time as a fraction of 24 hours
-      // With  Unless 'cellStyles: true', dates and times are exported as Date objects.
-
-      // Steve Gray spreadsheet has times as decimal numbers, which is weird.
+      // the fractional part represents the time as a fraction of 24 hours.
+      // With 'cellStyles: true', 
+      // dates and times are exported as Date objects.
 
       console.log(typeof cell, cell, cell instanceof Date);
 
       if (cell instanceof Date) {
         // Try to tidy incomplete Excel values
-        if (cell.getFullYear() < 1900) {
-          // Spreadsheet didn't specify year
+        if (cell.getHours()==0 && cell.getMinutes()==0) { // Looks like a date
+          cellValue = `${dayNames[cell.getDay()]} ${cell.getDate()} ${monthNames[cell.getMonth()]}`;
+          // TODO Don't really want to put the day into theData
+          const year = cell.getFullYear();
+          if (year > 1904) {
+            cellValue = cellValue + ` ${year}`;
+          }
+        }
+        else { // Probably a time
           cellValue = `${f(cell.getHours())}:${f(cell.getMinutes())}`;
         }
       }
+
+      // Steve Gray spreadsheet has times as decimal numbers, which is weird.
       else if ( (typeof cell === 'number') &&
                 (cell % 1 !== 0) ) { 
-        // Assume this is a time) 
+        // Assume a non-integer is a time 
         const hours = Math.floor(cell);
+        const minutes = Math.round((cell - hours) * 100);
+        if (minutes < 60) { // looks like a time
+          cellValue = `${hours}.${f(minutes)}`;
+        }
+        else { // give up
+          cellValue = cell.toString();
+        }
       }
 
       /* Not needed with cellStyles:true
@@ -626,8 +645,9 @@ function createDTSTAMP() {
  */
 function isMonth(month) {
   month = month.toUpperCase();
-  return ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST',
-          'SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'].find((m) => {
+  //return ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST',
+  //        'SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'].find((m) => {
+  return monthNames.map(m => m.toUpperCase()).find((m) => {
       return m.startsWith(month);
     }) != undefined;
 }
