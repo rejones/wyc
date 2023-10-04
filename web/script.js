@@ -223,14 +223,14 @@ function loadFile(file) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
+    const workbook = XLSX.read(data, { cellStyles: true, raw: true, type: 'array' });
     let sheetName;
 
     if (workbook.SheetNames.length == 1) {
       // only one sheet
       sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      jsonData = XLSX.utils.sheet_to_json(sheet, { skipHidden: true, header: 1 });
+      jsonData = XLSX.utils.sheet_to_json(sheet, { skipHidden: true, raw: false, header: 1 });
       replaceSheetGroup();
       addSpreadsheetHeading();
       const sheetChooser = document.getElementById("sheet-names");
@@ -254,7 +254,7 @@ function loadFile(file) {
       select.addEventListener('change', (event) => {
         sheetName = event.target.value;
         const sheet = workbook.Sheets[sheetName];
-        jsonData = XLSX.utils.sheet_to_json(sheet, { skipHidden: true, header: 1 });
+        jsonData = XLSX.utils.sheet_to_json(sheet, { skipHidden: true, raw: false, header: 1 });
         renderTable(jsonData);
       });
 
@@ -271,7 +271,7 @@ function loadFile(file) {
       // Assume the first sheet initially
       sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      jsonData = XLSX.utils.sheet_to_json(sheet, { skipHidden: true, header: 1 });
+      jsonData = XLSX.utils.sheet_to_json(sheet, { skipHidden: true, raw: false, header: 1 });
       // Clear any previous column selections
       renderTable(jsonData);
     }
@@ -395,8 +395,6 @@ function renderTable(data) {
           
           // Steve Gray spreadsheet has times as decimal numbers, which is weird.
           if ((1 <= cell) && (cell < 24.00)) {
-            // generateICal copes with "hh.mm"
-            console.log('non-integer < 24', cell, cellValue);
             const hours = Math.floor(cell);
             const minutes = Math.round((cell - hours) * 100);
             if (minutes < 60) { // looks like a time
