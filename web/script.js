@@ -391,12 +391,25 @@ function renderTable(data) {
 
       // Check if the cell format is "hh:mm"
       if (typeof cell === 'number') {
-        if (cell % 1 !== 0) { 
-          // Assume this is a time
-          const excelTime = cell % 1; 
-          const hours = Math.floor(excelTime * 24);
-          const minutes = Math.round(((excelTime * 24 ) % 1) * 60);
-          cellValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        if (cell % 1 !== 0) { // Assume this is a time
+          
+          // Steve Gray spreadsheet has times as decimal numbers, which is weird.
+          if ((1 <= cell) && (cell < 24.00)) {
+            // generateICal copes with "hh.mm"
+            console.log('non-integer < 24', cell, cellValue);
+            const hours = Math.floor(cell);
+            const minutes = Math.round((cell - hours) * 100);
+            if (minutes < 60) { // looks like a time
+              cellValue = `${hours}.${f(minutes)}`;
+            }
+          }
+          else {
+            // Assume it's an Excel time
+            const excelTime = cell % 1; 
+            const hours = Math.floor(excelTime * 24);
+            const minutes = Math.round(((excelTime * 24) % 1) * 60);
+            cellValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+          }
         }
         else if (cell > 43481) { // ie a date after 1 Jan 2020
           const date = new Date(Date.UTC(0, 0, cell-1));
