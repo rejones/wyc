@@ -223,7 +223,7 @@ function loadFile(file) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { cellStyles: true, cellDates: true, type: 'array' });
+    const workbook = XLSX.read(data, { type: 'array' });
     let sheetName;
 
     if (workbook.SheetNames.length == 1) {
@@ -355,9 +355,10 @@ function renderTable(data) {
       // the fractional part represents the time as a fraction of 24 hours.
       // With 'cellStyles: true', 
       // dates and times are exported as Date objects.
+      // However, this seems very fragile as it is dependant of very precise
+      // formatting in Excell
 
-      console.log(typeof cell, cell, cell instanceof Date);
-
+      /*
       if (cell instanceof Date) {
         // Try to tidy incomplete Excel values
         if (cell.getHours()==0 && cell.getMinutes()==0) { // Looks like a date
@@ -386,8 +387,8 @@ function renderTable(data) {
           cellValue = cell.toString();
         }
       }
+      */
 
-      /* Not needed with cellStyles:true
       // Check if the cell format is "hh:mm"
       if (typeof cell === 'number') {
         if (cell % 1 !== 0) { 
@@ -404,7 +405,6 @@ function renderTable(data) {
           }
         }
       }
-      */
           
       //console.log(cellValue);
       html += `<td>${cellValue}</td>`;
@@ -645,8 +645,6 @@ function createDTSTAMP() {
  */
 function isMonth(month) {
   month = month.toUpperCase();
-  //return ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST',
-  //        'SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'].find((m) => {
   return monthNames.map(m => m.toUpperCase()).find((m) => {
       return m.startsWith(month);
     }) != undefined;
