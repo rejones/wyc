@@ -114,11 +114,13 @@ class AbortError extends Error {
 
 
 // Capture all otherwise uncaught errors
-window.onerror = function (error, source, lineno, colno, error) {
-  if (!(error instanceof AbortError))
+window.onerror = function (evt, source, lineno, colno, error) {
+  if (!(error instanceof AbortError)) {
+    warn(`Unexpected error at line ${lineno}!\n`, evt, error);
     alert(`Unexpected error at line ${lineno}!\n` +
         error +
         "\nPlease report");
+  }
 }
 
 /** 
@@ -406,7 +408,8 @@ function renderTable(data) {
 
       else {
         let matchDate;
-        if (cell && (matchDate = cell.match(/^(\d\d?)\/(\d\d?)\/(\d{2,4})$/))) {
+        // Defend against regex DOS attacks, otherwise trailing spaces is polynomial
+        if (cell && (matchDate = cell.trim().match(/^(\d\d?)\/(\d\d?)\/(\d{2,4})$/))) {
           // Looks like a date.
           // Excel default format seems to be m/d/yy but we want to display and use d/m/yy
           cellValue = `${matchDate[2]}/${matchDate[1]}/${matchDate[3]}`;
@@ -512,7 +515,7 @@ function renderTable(data) {
 function getKeyByValue(map, value) {
   for (let key of map.keys()) {
     if (map.get(key) === value) {
-        return key;
+      return key;
     }
   }
   return null;
@@ -673,11 +676,11 @@ function parseDate(rowDate) {
   // First, try Excel Date format which is read as a number
   if (!isNaN(rowDate)) {
     // Try converting from Excel date to JS date
-    alert(`rowDate (${rowDate}) is a number`);
+    //console.log(`rowDate (${rowDate}) is a number`);
     const date = new Date(Date.UTC(0, 0, rowDate -1));
     //console.log(date);
     if (isNaN(date.getFullYear())) {
-      //console.log('parseDate returns null!');
+      //console.warn(`parseDate returns null! for ${rowDate}`);
       return null;
     }
     //console.log(rowDate, date.getDate(), date.getMonth() + 1, date.getFullYear());
@@ -693,7 +696,7 @@ function parseDate(rowDate) {
       year = year + 2000;
     }
     if (isNaN(new Date(year, month, day).valueOf())) {
-      console.log('parseDate returns null!');
+      console.warn('parseDate returns null!');
       return null;
     }
     return [day, month, year.toString()];
@@ -767,7 +770,7 @@ function generateICal(data, calendarsToExport) {
     // Discard header and any other unlikely lines
     const start = line[startCol];
     if ( !start || !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) {
-      console.log(`Ignoring line ${lineNum} ${line}: no start time specified`);
+      console.warn(`Ignoring line ${lineNum} ${line}: no start time specified`);
       continue;
     }
 
@@ -825,7 +828,7 @@ function generateICal(data, calendarsToExport) {
       // check that any year value matches the year chosen 
       if ((dayMonthYear.length === 3) &&
           (dayMonthYear[2] != theDefaultYear)) {
-        alert(`Different year (${dayMonthYear[2]})on line ${lineNum}\nIs this what you meant?`);
+        warnUser(`Different year (${dayMonthYear[2]})on line ${lineNum}\nIs this what you meant?`);
       }
       else if (dayMonthYear.length === 2) {
         dayMonthYear.push(theDefaultYear);
@@ -849,7 +852,7 @@ function generateICal(data, calendarsToExport) {
     // Discard any lines with no event.
     let theEvent = line[columns.get(CEVENT)];
     if ( !theEvent ) {
-      console.log(`Ignoring line ${lineNum} ${line}: no event specified`);
+      console.warn(`Ignoring line ${lineNum} ${line}: no event specified`);
       continue;
     }
 
@@ -890,7 +893,7 @@ function generateICal(data, calendarsToExport) {
       if (matchTime = line[columns.get(CEND)].match(/^(\d\d?)[:\.]?(\d\d)/)) {
         if ((+theHour > + matchTime[1]) ||
             ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
-          alert(`Event on line ${lineNum} ${line[columns.get(CEVENT)]? line[columns.get(CEVENT)] : ''} has mismatched start and end times\n` +
+          warnUser(`Event on line ${lineNum} ${line[columns.get(CEVENT)]? line[columns.get(CEVENT)] : ''} has mismatched start and end times\n` +
                 `${line[columns.get(CSTART)]} and ${line[columns.get(CEND)]}`);
         }
         theEndHour = matchTime[1];
@@ -904,7 +907,7 @@ function generateICal(data, calendarsToExport) {
 
     // Or may have a Duration
     else if (columns.has(CDURATION) && line[columns.get(CDURATION)]) {
-      console.log(line[columns.get(CEVENT)], line[columns.get(CSTART)], line[columns.get(CDURATION)]);
+      //console.log(line[columns.get(CEVENT)], line[columns.get(CSTART)], line[columns.get(CDURATION)]);
       if (matchTime = line[columns.get(CDURATION)].match(/^(\d\d?)([:\.]\d\d)?/)) {
         theEndHour = +theHour + +matchTime[1];
         if (matchTime[2]) {
@@ -931,7 +934,7 @@ function generateICal(data, calendarsToExport) {
       theEndMin -= 60;
     }
     if (theEndHour >= 24) {
-      alert(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`);
+      warnUser(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`);
       theEndHour = '23';
       theEndMin = '59';
     }
@@ -1012,7 +1015,7 @@ function printICAL (DTSTAMP, theDay, theMonth, theYear, theStart, theMin,
   const end = convHourUTC(theYear, theMonth, theDay, theEnd) + theEndMin + '00';
   let alarm = start - ADVANCE;
   if (alarm < 0) { 
-    alert(`Alarm set for previous day: ${theEvent}`);
+    warnUser(`Alarm set for previous day: ${theEvent}`);
     alarm = "000000";
   } else { 
     alarm = String(alarm).padStart(4, '0');
@@ -1080,6 +1083,16 @@ function openICalWindow(calendarsToExport, iCal) {
 
 
 /**
+ * Warn user and log
+ * @param msg The alert message
+ */
+function warnUser(msg) {
+  console.warn(msg);
+  alert(msg);
+}
+
+
+/**
  * Warn about bad record in the spreadsheet
  * @param msg The error message
  * @param lno The number of the line on which the error was found
@@ -1089,6 +1102,7 @@ function bad(msg, lno, evt) {
   const message = evt ? 
       `BAD RECORD: ${msg} on line ${lno} for event ${evt} so ignoring this line.` :
       `BAD RECORD: ${msg} on line ${lno} so ignoring this line.` ;
+  console.warn(message);
   if (confirm(message)) {
     return;
   } else {
