@@ -144,7 +144,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const option = document.createElement('option');
     option.value = year;
     option.textContent = year;
-    option.selected = year == currentYear;
+    option.selected = year == currentYear+1;
     yearDropdown.appendChild(option);
   }
 
@@ -225,12 +225,13 @@ function loadFile(file) {
     const data = new Uint8Array(e.target.result);
     const workbook = XLSX.read(data, { cellStyles: true, type: 'array' });
     let sheetName;
+    const options = { skipHidden: true, raw: false, header: 1 };
 
     if (workbook.SheetNames.length == 1) {
       // only one sheet
       sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      jsonData = XLSX.utils.sheet_to_json(sheet, { skipHidden: true, raw: false, header: 1 });
+      jsonData = XLSX.utils.sheet_to_json(sheet, options);
       replaceSheetGroup();
       addSpreadsheetHeading();
       const sheetChooser = document.getElementById("sheet-names");
@@ -254,7 +255,7 @@ function loadFile(file) {
       select.addEventListener('change', (event) => {
         sheetName = event.target.value;
         const sheet = workbook.Sheets[sheetName];
-        jsonData = XLSX.utils.sheet_to_json(sheet, { skipHidden: true, raw: false, header: 1 });
+        jsonData = XLSX.utils.sheet_to_json(sheet, options);
         renderTable(jsonData);
       });
 
@@ -271,7 +272,7 @@ function loadFile(file) {
       // Assume the first sheet initially
       sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      jsonData = XLSX.utils.sheet_to_json(sheet, { skipHidden: true, raw: false, header: 1 });
+      jsonData = XLSX.utils.sheet_to_json(sheet, options);
       // Clear any previous column selections
       renderTable(jsonData);
     }
@@ -356,7 +357,7 @@ function renderTable(data) {
       // With 'cellStyles: true', 
       // dates and times are exported as Date objects.
       // However, this seems very fragile as it is dependant of very precise
-      // formatting in Excell
+      // formatting in Excel.
 
       /*
       if (cell instanceof Date) {
@@ -371,20 +372,6 @@ function renderTable(data) {
         }
         else { // Probably a time
           cellValue = `${f(cell.getHours())}:${f(cell.getMinutes())}`;
-        }
-      }
-
-      // Steve Gray spreadsheet has times as decimal numbers, which is weird.
-      else if ( (typeof cell === 'number') &&
-                (cell % 1 !== 0) ) { 
-        // Assume a non-integer is a time 
-        const hours = Math.floor(cell);
-        const minutes = Math.round((cell - hours) * 100);
-        if (minutes < 60) { // looks like a time
-          cellValue = `${hours}.${f(minutes)}`;
-        }
-        else { // give up
-          cellValue = cell.toString();
         }
       }
       */
@@ -409,13 +396,23 @@ function renderTable(data) {
             cellValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
           }
         }
-        else if (cell > 43481) { // ie a date after 1 Jan 2020
+        else if (cell > 43480) { // Assume it's a date after 1 Jan 2020
           const date = new Date(Date.UTC(0, 0, cell-1));
           if (!isNaN(date.getFullYear())) {
             cellValue = date.toDateString();
           }
         }
       }
+
+      else {
+        let matchDate;
+        if (cell && (matchDate = cell.match(/^(\d\d?)\/(\d\d?)\/(\d{2,4})$/))) {
+          // Looks like a date.
+          // Excel default format seems to be m/d/yy but we want to display and use d/m/yy
+          cellValue = `${matchDate[2]}/${matchDate[1]}/${matchDate[3]}`;
+        }
+      }
+
           
       //console.log(cellValue);
       html += `<td>${cellValue}</td>`;
@@ -674,7 +671,6 @@ function parseDate(rowDate) {
     return null;
 
   // First, try Excel Date format which is read as a number
-  // TODO not needed now that renderTable converts Excel serial values to date strings 
   if (!isNaN(rowDate)) {
     // Try converting from Excel date to JS date
     alert(`rowDate (${rowDate}) is a number`);
@@ -688,6 +684,21 @@ function parseDate(rowDate) {
     return [date.getDate().toString(), date.getMonth() + 1, date.getFullYear()].map((e) => {return e.toString()});
   }
   
+  // Next, try dd/mm/yy
+  if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)\/(\d{2,4})$/)) {
+    const day = matchDate[1];
+    const month = matchDate[2];
+    let year = +matchDate[3];
+    if ((0 <= year) && (year < 100)) {
+      year = year + 2000;
+    }
+    if (isNaN(new Date(year, month, day).valueOf())) {
+      console.log('parseDate returns null!');
+      return null;
+    }
+    return [day, month, year.toString()];
+  }
+
   //Next, try numbers and words
 
   // Define the regular expression for the delimiters (spaces and commas)
@@ -1098,7 +1109,6 @@ TODO Bugs and possible improvements.
    . isMonth() - cardinal number, or month name or abbreviation
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
    Probably, don't bother as we now let user bail out early.
-2. TODO Handle Excel times
 
 From Robert 10/9/23
 It would be good to have a description on what the dropdowns are looking for, and what happens if they're not selected. For example:If a field in the dropdowns isn't used, what happens? For example: End; Duration and Calendar. Does it assume something for these?
@@ -1110,5 +1120,10 @@ Other
   ADDED a Default Duration box.
   CHANGED Year box to Default Year.
   ADDED tooltips to all initial components, i.e. the drop zone, the Choose File button, Default Year, Default Duration, Events Prefix
+
+From Steve 2/10/23
+Hidden rows ADDED skipHidden (which requires cellStyles:true)
+Header row is not necessarily the first row, which may be too short. FIXED to use max width select boxes
+Uses non-integer as a time, e.g. 12.3 means "12:30". CHANGED to guess that a non-integer in range 0..24 is a time.
 
 */
