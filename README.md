@@ -1,37 +1,33 @@
-# Generate a calendar file from WYC sailing events Excel file
+# Generate a calendar file from an Excel file
 
-[Whitstable Yacht Club] (https://wyc.org.uk) (WYC) publishes its sailing events calendar 
-as an Excel spreadsheet (and a webpage).
-wyc.pl is a tool for convert this spreadsheet (saved as a `.csv` file) 
-to a file suitable for importing into calendars like Apple or Google Calendar etc.
+Organisations 
+(such as [Whitstable Yacht Club](https://wyc.org.uk))
+often publish their events calendar as an Excel spreadsheet (and a webpage).
+The tools provided here convert spreadsheet data into to a format suitable 
+for importing into calendars like Apple or Google Calendar etc.
 
-## Usage
+## Tools
 
-`wyc.pl [-h] [-v] [-d] [-z] calendar [year] < in.csv > outfile`
+Two tools are provided, one as a web application and one as a command-line tool.
 
-The default output format is iCalendar (`.ics`) as per 
-[RFC 5545] (https://www.rfc-editor.org/rfc/rfc5545). 
-Other supported but obsolete formats are:
--  vCalendar (`.vcs`)
--  DateBook for Palm mobile devices (`.dba`)
+### Web version
 
-The `calendar` argument is the type of events to generate,
-i.e. for WYC, "Main" or "Cadet".
+_xl2cal_ is a web application. 
+Its use is simple. The user drags an `.xlsx` spreadsheet onto a web page,
+and then selects which sheet, and which columns on that sheet, to use.
+The output is an iCalendar (`.ics`) file as per 
+[RFC 5545] (https://www.rfc-editor.org/rfc/rfc5545).
+Written in plain JavaScript, it relies on the very excellent Excel
+parser [SheetJS](https://sheetjs.com).
 
-Options:
-```
-  -h 		Print this help.
-  -v		Use .vcs format rather than iCalendar.
-  -d		Use .dba format rather than iCalendar.
-  -z		Use UTC rather than local time.
-```
-## History
+### Command-line version
 
-The tool has undergone a number of changes over the years, 
-from the first version supporting Palm Pilot DateBook calendars
-to more modern calendars that import iCalendar version 2 files.
-Currently, the Perl tool is pretty hard-wired to the column
-structure of the WYC spreadsheet, but I plan to improve this.
+_wyc.pl_ is a command-line tool written in Perl.
+It's use is more complicated than the web application.
+The input is a `.csv` file.
+The output may be `.ics`, `.vcs` (vCalendar), or even `.dba` (DateBook for 
+Palm mobile devices)!
+Command-line arguments specify the columns of the `.csv` file to use.
 
-Richard Jones
-17.1.2023
+This version is not being actively maintained.
+
