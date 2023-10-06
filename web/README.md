@@ -1,6 +1,3 @@
- xl2cal: Instructions    [xl2cal](xl2cal.html) 
-=======================
-
  How to use xl2cal
 -----------------
 
@@ -21,7 +18,7 @@
   (events spanning days must be added as separate events), 
   the start time of the event, 
   and a name for the event. 
-  See section [Selecting columns for export](#columns) for more detail.
+  See section [Selecting columns for export](#3-selecting-columns-for-export) for more detail.
  
  All event rows must provide this information. 
  Any row that does not look like an event is ignored. 
@@ -34,24 +31,24 @@
  Load your spreadsheet into *xl2cal* by either:
 
 - dragging the spreadsheet file onto the landing site labelled
-  Drag and drop a spreadsheet file here or
-- using the Choose file button.
+  `Drag and drop a spreadsheet file here` or
+- using the `Choose file` button.
  
  By default, *xl2cal* assumes that the sheet to use is the first
  in the spreadsheet.
  However, you can change this with the
- Sheet name or number box.
+ `Sheet name or number` box.
  Note that sheets are numbered from 0.
 
  You may also wish to select the calendar year for your calendar
- from the Select Year drop-down list on the left.
+ from the `Select Year` drop-down list on the left.
  The default is the current year.
 
- Set default duration of events with Duration box.
+ Set default duration of events with the `Duration` box.
  Times may be hours (e.g. "2") or hours and minutes (e.g. "0:45" or "0.45").
 
  If you want all calendar entries to use a common prefix (such as "WYC"),
- enter it in the Events Prefix box on the right.
+ enter it in the `Events Prefix` box on the right.
 
 ### 3. Selecting columns for export
 
@@ -116,7 +113,7 @@ These columns are optional and do not need to be selected.
      If this column is specified, any entry in this column will be used for the
      duration of an event.
      Otherwise, the event will be given the default duration from the
-     Duration box.
+     `Duration` box.
      Acceptable entries include "2", "2:30" and Excel Time format
      (see [Errors](#errors) below).
 
@@ -157,13 +154,13 @@ spaces between words, no misspelt words.
  You have two choices if a warning pops up for a row with invalid data.
 
 - To continue generating your iCalendar without this row,
-  click OK.
+  click `OK`.
 - to cancel generating your iCalendar, 
-  click Cancel.
+  click `Cancel`.
  
 ### 4. Selecting the calendars to export
 
- Click the Export button to start to generate your calendar in
+ Click the `Export` button to start to generate your calendar in
  iCalendar format.
  This button will only be enabled (with a blue background) if you have selected sufficient
  columns.
@@ -177,7 +174,7 @@ spaces between words, no misspelt words.
  If you do not choose any,
  or if no "Calendar" column was selected,
  the iCalendar file generated will contain entries for all events.
- Click the Export button to complete
+ Click the `Export` button to complete
  generating your calendar.
 
 ### 5. Download the schedule as an iCalendar file
@@ -185,7 +182,7 @@ spaces between words, no misspelt words.
  When the iCalendar has been generated,
  a window will appear inviting you to download the calendar.
  This window also displays the text of the iCalendar generated.
- Click the Download iCalendar button at the top
+ Click the `Download iCalendar` button at the top
  of the window to download the iCalendar.
  You should choose to save the iCalendar in a file with extension
  `.ics`.
