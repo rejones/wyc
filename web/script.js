@@ -389,14 +389,14 @@ function renderTable(data) {
       // However, this seems very fragile as it is dependant of very precise
       // formatting in Excel.
 
-      /*
+      // not used anymore
       if (cell instanceof Date) {
         // Try to tidy incomplete Excel values
         if (cell.getHours()==0 && cell.getMinutes()==0) { // Looks like a date
           cellValue = `${dayNames[cell.getDay()]} ${cell.getDate()} ${monthNames[cell.getMonth()]}`;
           // TODO Don't really want to put the day into theData
           const year = cell.getFullYear();
-          if (year > 1904) {
+          if (year > 1904) { // Otherwise, user probably didn't specify year so likely to be 1899 or 1903
             cellValue = cellValue + ` ${year}`;
           }
         }
@@ -404,11 +404,10 @@ function renderTable(data) {
           cellValue = `${f(cell.getHours())}:${f(cell.getMinutes())}`;
         }
       }
-      */
 
       // Check if the cell format is "hh:mm"
-      if (typeof cell === 'number') {
-        if (cell % 1 !== 0) { // Assume this is a time
+      else if (typeof cell === 'number') {
+        if (cell % 1 !== 0) { // A non-integer so assume this is a time
           
           // Steve Gray spreadsheet has times as decimal numbers, which is weird.
           if ((1 <= cell) && (cell < 24.00)) {
