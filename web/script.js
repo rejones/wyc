@@ -771,6 +771,7 @@ function parseDate(rowDate) {
 function generateICal(data, calendarsToExport) {
   const DTSTAMP = createDTSTAMP();
   const startCol = columns.get(CSTART);
+  const eventCol = columns.get(CEVENT);
   const startPattern = /^\d{4}$|^\d{2}:\d{2}$/;
 
   const theDefaultYear = document.getElementById('year-dropdown').value;
@@ -814,20 +815,21 @@ function generateICal(data, calendarsToExport) {
 
     if (columns.has(CDAY) && columns.has(CMONTH)) {
       theYear = theDefaultYear;
-      const lineMonth = line[columns.get(CMONTH)];
+      const monthCol = columns.get(CMONTH); 
+      const lineMonth = line[monthCol];
       // allow either month number or string
       if (/^\d\d?$/.test(lineMonth)) {
-        theMonth =  line[columns.get(CMONTH)];
+        theMonth =  line[monthCol];
       }
       else {
         const mth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
         if (!mth) {
-          bad(`Cannot understand month \"${lineMonth}\"`, lineNum, line[columns.get(CEVENT)]);
+          bad(`Cannot understand month \"${lineMonth}\"`, lineNum, line[eventCol]);
           continue;
         }
         theMonth = 0 + mth;
         if (theMonth < 1 || theMonth > 12) {
-          bad(`Invalid month ${month} ${lineMonth} ${line[columns.get(CMONTH)]}`, lineNum, line[columns.get(CEVENT)]);
+          bad(`Invalid month ${month} ${lineMonth} ${line[monthCol]}`, lineNum, line[eventCol]);
           continue;
         }
       }
@@ -839,15 +841,20 @@ function generateICal(data, calendarsToExport) {
         theDay = matchDay[1];
       } else {
         //if (!(/^\d\d?$/.test(theDay))) {
-        bad(`Cannot understand day number \"${theDay}\"`, lineNum, line[columns.get(CEVENT)]); 
+        bad(`Cannot understand day number \"${theDay}\"`, lineNum, line[eventCol]); 
         continue; 
       }
 
     } else if (columns.has(CDATE)) {
       // parse a date
-      const dayMonthYear = parseDate(line[columns.get(CDATE)]);
+      const dateCol = columns.get(CDATE);
+      if (!line[dateCol]) {
+        bad(`Empty date ${line[dateCol]}`, lineNum, line[eventCol]);
+        continue;
+      }
+      const dayMonthYear = parseDate(line[dateCol]);
       if (!dayMonthYear) {
-        bad(`Bad date ${line[columns.get(CDATE)]}`, lineNum, line[columns.get(CEVENT)]);
+        bad(`Bad date ${line[dateCol]}`, lineNum, line[eventCol]);
         continue;
       }
       //console.log(dayMonthYear);
@@ -871,7 +878,7 @@ function generateICal(data, calendarsToExport) {
 
     // Check that the date is valid
     if (new Date(theYear, theMonth-1, theDay).getMonth() != theMonth-1) {
-      bad(`${theDay}/${theMonth}/${theYear} is not a valid date`, lineNum, line[columns.get(CEVENT)]);
+      bad(`${theDay}/${theMonth}/${theYear} is not a valid date`, lineNum, line[eventCol]);
       continue;
     }
 
@@ -892,42 +899,43 @@ function generateICal(data, calendarsToExport) {
 
     // Must have a Start time
     let matchTime;
-    if (matchTime = line[columns.get(CSTART)].match(/^(\d\d?)[:\.]?(\d\d)/)) {
+    if (matchTime = line[startCol].match(/^(\d\d?)[:\.]?(\d\d)/)) {
       theHour = matchTime[1].padStart(2, '0');
       theMin = matchTime[2];
     }
-    else if (line[columns.get(CSTART)].match(/TBA|TBC|-/i) || 
-              line[columns.get(CSTART)] === '') {
+    else if (line[startCol].match(/TBA|TBC|-/i) || 
+              line[startCol] === '') {
       theHour = TBAhour;
       theMin = '00';
       theEndHour = TBAend_hour;
       theEndMin = '00';
       theEvent = theEvent + TBAstring;
     }
-    else if (line[columns.get(CSTART)].match(/N\/?A/i)) {
+    else if (line[startCol].match(/N\/?A/i)) {
       theHour = NAhour;
       theMin = '00';
       theEndHour = NAend_hour;
       theEndMin = '00';
     }   
     else {
-      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, lineNum, line[columns.get(CEVENT)]); 
+      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, lineNum, line[eventCol]); 
       continue; 
     }
 
     // May have an End time
     if (columns.has(CEND) && line[columns.get(CEND)]) {
-      if (matchTime = line[columns.get(CEND)].match(/^(\d\d?)[:\.]?(\d\d)/)) {
+      const endCol = columns.get(CEND);
+      if (matchTime = line[endCol].match(/^(\d\d?)[:\.]?(\d\d)/)) {
         if ((+theHour > + matchTime[1]) ||
             ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
-          warnUser(`Event on line ${lineNum} ${line[columns.get(CEVENT)]? line[columns.get(CEVENT)] : ''} has mismatched start and end times\n` +
-                `${line[columns.get(CSTART)]} and ${line[columns.get(CEND)]}`);
+          warnUser(`Event on line ${lineNum} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
+                `${line[startCol]} and ${line[endCol]}`);
         }
         theEndHour = matchTime[1];
         theEndMin = matchTime[2];
       }
       else {
-        bad(`Cannot understand End time ${line[columns.get(CEND)]}`, lineNum, line[columns.get(CEVENT)]); 
+        bad(`Cannot understand End time ${line[endCol]}`, lineNum, line[eventCol]); 
         continue; 
       }
     }
