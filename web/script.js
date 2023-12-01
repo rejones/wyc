@@ -144,7 +144,7 @@ class AbortError extends Error {
 // Capture all otherwise uncaught errors
 window.onerror = function (evt, source, lineno, colno, error) {
   if (!(error instanceof AbortError)) {
-    warn(`Unexpected error at line ${lineno}!\n`, evt, error);
+    console.warn(`Unexpected error at line ${lineno}!\n`, evt, error);
     alert(`Unexpected error at line ${lineno}!\n` +
         error +
         "\nPlease report");
