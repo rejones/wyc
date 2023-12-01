@@ -558,10 +558,14 @@ function findCalendars() {
   if (columns.has(CCALENDAR)) {
     const startCol = columns.get(CSTART);
     const calCol = columns.get(CCALENDAR);
-    const pattern = /^\d{4}$|^\d{2}:\d{2}$/; // looks like a Start time
     for (let row of theData) {
       const start = row[startCol];
-      if (pattern.test(start)) {
+      if (!start)
+        continue;
+      // Replicate patterns for Start time in generateICal
+      if ( start.match(/^(\d\d?)[:\.]?(\d\d)/) ||
+           start.match(/TBA|TBC|-/i) ||
+           start.match(/N\/?A/i) ) {
         calendarsFound.add(row[calCol]) 
       }
     }
