@@ -566,7 +566,10 @@ function findCalendars() {
       if ( start.match(/^(\d\d?)[:\.]?(\d\d)/) ||
            start.match(/TBA|TBC|-/i) ||
            start.match(/N\/?A/i) ) {
-        calendarsFound.add(row[calCol]) 
+        console.log(row[columns.get(CEVENT)], row[calCol]);
+        if (row[calCol]) {
+          calendarsFound.add(row[calCol]);
+        }
       }
     }
   }
@@ -591,7 +594,7 @@ function cancelSelect() {
  */
 function exportSelect() {
   const calendarsToExport = new Set();
-  if (columns.has(CCALENDAR)) {
+  if (columns.has(CCALENDAR) && (calendarsFound.size > 0)) {
     const checkedCalendars = document.querySelectorAll('input[name=calendar-checkbox]:checked');
     checkedCalendars.forEach(function(cal) {
       calendarsToExport.add(cal.value);
@@ -616,6 +619,7 @@ function exportSelect() {
 function exportCalendar() {
   // First, search the spreadsheet for calendars, if any
   allCalendars = calendarsFound = findCalendars();
+  console.log(calendarsFound, calendarsFound.size);
   if (calendarsFound.size > 0) {
     // If any found, ask which calendars to use
     selectCalendars(calendarsFound);
