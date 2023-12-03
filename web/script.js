@@ -811,7 +811,7 @@ function generateICal(data, calendarsToExport) {
     }
 
     // Skip rows for unwanted calendars
-    if (columns.has(CCALENDAR)) {
+    if (columns.has(CCALENDAR) && (calendarsToExport.size > 0)) {
        const theCal = line[columns.get(CCALENDAR)];
        if (!calendarsToExport.has(theCal)) {
          continue;
