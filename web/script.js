@@ -566,7 +566,7 @@ function findCalendars() {
       if ( start.match(/^(\d\d?)[:\.]?(\d\d)/) ||
            start.match(/TBA|TBC|-/i) ||
            start.match(/N\/?A/i) ) {
-        console.log(row[columns.get(CEVENT)], row[calCol]);
+        //console.log(row[columns.get(CEVENT)], row[calCol]);
         if (row[calCol]) {
           calendarsFound.add(row[calCol]);
         }
@@ -1107,6 +1107,7 @@ function openICalWindow(calendarsToExport, iCal) {
   } else {
     filename = 'myCalendar.ics';
   }
+  console.log('filename', filename);
   heading.innerHTML = title;
   newWindow.document.body.appendChild(heading);
 
