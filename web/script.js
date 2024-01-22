@@ -140,16 +140,23 @@ class AbortError extends Error {
   }
 }
 
-
 // Capture all otherwise uncaught errors
 window.onerror = function (evt, source, lineno, colno, error) {
-  if (!(error instanceof AbortError)) {
-    console.warn(`Unexpected error at line ${lineno}!\n`, evt, error);
-    alert(`Unexpected error at line ${lineno}!\n` +
-        error +
-        "\nPlease report");
+  if (error instanceof TypeError) {
+      alert("It looks like you have accessed this page with the http: protocol.\n" +
+            "You must use https:");
+  } 
+  else {
+    if (!(error instanceof AbortError)) {
+      console.warn(`Unexpected error at line ${lineno}!\n`, evt, error);
+      alert(`Unexpected error at line ${lineno}!\n` +
+             error +
+             "\nPlease report");
+     }
   }
 }
+
+crypto.randomUUID(); // Check early for https: (or file:) not http:
 
 /** 
  * Add listener on events to 
@@ -1063,7 +1070,7 @@ function printICAL (DTSTAMP, theDay, theMonth, theYear, theStart, theMin,
   } else { 
     alarm = String(alarm).padStart(4, '0');
   }
-  const uid = crypto.randomUUID();
+  const uid = crypto.randomUUID(); // Requires https: (or file:) not http:
   const entry = 
 `BEGIN:VEVENT
 CREATED:${DTSTAMP}${Z}
