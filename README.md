@@ -2,7 +2,8 @@
 
 Organisations 
 (such as [Whitstable Yacht Club](https://wyc.org.uk))
-often publish their events calendar as an Excel spreadsheet (and a webpage).
+often construct their events calendar in an Excel spreadsheet 
+before publishing on a web page, etc.
 The tools provided here convert spreadsheet data into to a format suitable 
 for importing into calendars like Apple or Google Calendar etc.
 
@@ -23,7 +24,7 @@ parser [SheetJS](https://sheetjs.com).
 ### Command-line version
 
 _wyc.pl_ is a command-line tool written in Perl.
-It's use is more complicated than the web application.
+Its use is more complicated than the web application.
 The input is a `.csv` file.
 The output may be `.ics`, `.vcs` (vCalendar), or even `.dba` (DateBook for 
 Palm mobile devices)!
