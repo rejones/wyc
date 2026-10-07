@@ -612,10 +612,12 @@ function exportSelect() {
 
   // Generate iCal
   const iCal = generateICal(theData, calendarsToExport);
-  //console.log(iCal);
-
-  //Open new window with iCal data
-  openICalWindow(calendarsToExport, iCal);
+  if (iCal) {
+    //console.log(iCal);
+  
+    //Open new window with iCal data
+    openICalWindow(calendarsToExport, iCal);
+  }
 }
 
 
@@ -819,10 +821,10 @@ function generateICal(data, calendarsToExport) {
 
     // Skip rows for unwanted calendars
     if (columns.has(CCALENDAR) && (calendarsToExport.size > 0)) {
-       const theCal = line[columns.get(CCALENDAR)];
-       if (!calendarsToExport.has(theCal)) {
-         continue;
-       }
+      const theCal = line[columns.get(CCALENDAR)];
+      if (!calendarsToExport.has(theCal)) {
+        continue;
+      }
     }
 
     // Get the day and month
@@ -877,7 +879,10 @@ function generateICal(data, calendarsToExport) {
       // check that any year value matches the year chosen 
       if ((dayMonthYear.length === 3) &&
           (dayMonthYear[2] != theDefaultYear)) {
-        warnUser(`Different year (${dayMonthYear[2]})on line ${lineNum}\nIs this what you meant?`);
+        if (!warnUserOrCancel(`Different year (${dayMonthYear[2]})on line ${lineNum}\nIs this what you meant?`)) {
+            text = null;
+            return null;
+        }
       }
       else if (dayMonthYear.length === 2) {
         dayMonthYear.push(theDefaultYear);
@@ -943,7 +948,7 @@ function generateICal(data, calendarsToExport) {
       if (matchTime = line[endCol].match(/^(\d\d?)[:\.]?(\d\d)/)) {
         if ((+theHour > + matchTime[1]) ||
             ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
-          warnUser(`Event on line ${lineNum} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
+          warnUserOrCancel(`Event on line ${lineNum} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
                 `${line[startCol]} and ${line[endCol]}`);
         }
         theEndHour = matchTime[1];
@@ -984,7 +989,7 @@ function generateICal(data, calendarsToExport) {
       theEndMin -= 60;
     }
     if (theEndHour >= 24) {
-      warnUser(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`);
+      warnUserOrCancel(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`);
       theEndHour = '23';
       theEndMin = '59';
     }
@@ -1065,7 +1070,7 @@ function printICAL (DTSTAMP, theDay, theMonth, theYear, theStart, theMin,
   const end = convHourUTC(theYear, theMonth, theDay, theEnd) + theEndMin + '00';
   let alarm = start - ADVANCE;
   if (alarm < 0) { 
-    warnUser(`Alarm set for previous day: ${theEvent}`);
+    warnUserOrCancel(`Alarm set for previous day: ${theEvent}`);
     alarm = "000000";
   } else { 
     alarm = String(alarm).padStart(4, '0');
@@ -1133,13 +1138,15 @@ function openICalWindow(calendarsToExport, iCal) {
 }
 
 
+const OKCancel = '\n(Press OK to continue or Cancel to abort)';
 /**
  * Warn user and log
  * @param msg The alert message
  */
-function warnUser(msg) {
+function warnUserOrCancel(msg) {
   console.warn(msg);
-  alert(msg);
+  //alert(msg);
+  return confirm(msg + OKCancel);
 }
 
 
