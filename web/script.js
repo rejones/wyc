@@ -74,7 +74,7 @@ const CEND = 'End';
 const CDURATION = 'Duration';
 const CEVENT = 'Event';
 const CCALENDAR = 'Calendar';
-const columnValues = [CDAY, CMONTH, CDATE, CEVENT, CSTART, CEND, CDURATION, CHW, CCALENDAR];
+const columnValues = [CDAY, CMONTH, CDATE, CEVENT, CSTART, CEND, CDURATION, CHW, CCALENDAR].sort();
 const columnTips = new Map([
     [CDAY,      "Number of the day of the event (e.g. '1' or '1st').\n" +
                 `MUST specify \'${CDAY}\' or \'${CDATE}\'.`],
@@ -879,7 +879,7 @@ function generateICal(data, calendarsToExport) {
       // check that any year value matches the year chosen 
       if ((dayMonthYear.length === 3) &&
           (dayMonthYear[2] != theDefaultYear)) {
-        if (!warnUserOrCancel(`Different year (${dayMonthYear[2]})on line ${lineNum}\nIs this what you meant?`)) {
+        if (!warnUserOrCancel(`Year (${dayMonthYear[2]}) on line ${lineNum} differs from ${theDefaultYear}\nIs this what you meant?`)) {
             text = null;
             return null;
         }
