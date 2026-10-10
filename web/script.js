@@ -100,7 +100,7 @@ const columnTips = new Map([
 // Constants
 const VERSION = '2.0'; // for iCalendar
 const H = 'H';         // needed for the DEFAULT_DURATION value
-const ADVANCE = 2;     // 2 hours warning
+const ALERT = 2;     // 2 hours warning
 
 // To Be Announced times
 const TBAhour = '09';             // so set the period to be 9.00 - 17.00
@@ -1068,7 +1068,7 @@ function printICAL (DTSTAMP, theDay, theMonth, theYear, theStart, theMin,
   const day = theYear.padStart(4, '0') + theMonth.padStart(2, '0') + theDay.padStart(2, '0');
   const start = convHourUTC(theYear, theMonth, theDay, theStart) + theMin + '00';
   const end = convHourUTC(theYear, theMonth, theDay, theEnd) + theEndMin + '00';
-  let alarm = start - ADVANCE;
+  let alarm = start - ALERT;
   if (alarm < 0) { 
     warnUserOrCancel(`Alarm set for previous day: ${theEvent}`);
     alarm = "000000";
@@ -1084,6 +1084,11 @@ DTSTAMP:${DTSTAMP}${Z}
 DTSTART:${day}${T}${start}${Z}
 DTEND:${day}${T}${end}${Z}
 SUMMARY:${thePrefix}${summary}
+BEGIN:VALARM
+TRIGGER:-PT${ALERT}H
+ACTION:DISPLAY
+DESCRIPTION:${thePrefix}${summary}
+END:VALARM
 END:VEVENT
 `;
   return(entry);
@@ -1198,4 +1203,9 @@ Hidden rows ADDED skipHidden (which requires cellStyles:true)
 Header row is not necessarily the first row, which may be too short. FIXED to use max width select boxes
 Uses non-integer as a time, e.g. 12.3 means "12:30". CHANGED to guess that a non-integer in range 0..24 is a time.
 
+October 2026
+Added a cancel button to the warning dialog to allow the user to abort generating a calendar rather than having to click 'OK' to every error.
+Sorted column header options.
+Improved error message when years mismatch
+Added a VALARM for ALERT hours before
 */
