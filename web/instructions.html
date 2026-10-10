@@ -27,15 +27,19 @@
   in an Excel spreadsheet, with filename extension <code>.xlsx</code>.
   <br><em>More formats may be added in the future.</em>
 </p>
+<figure>
+  <img src=excel.png alt="Example spreadsheet" width="600">
+  <figcaption>Figure 1: Example spreadsheet.</figcaption>
+</figure>
 <p>
   The layout of the spreadsheet is flexible, 
-  but <em>xl2cal</em> expects to find:
+  but <em>xl2cal</em> expects to find (e.g.&nbsp;Fig.&nbsp;1):
   <ul>
     <li>one event per row, and</li>
-  <li> columns specifying the day of the event 
+  <li> columns specifying the <em>day</em> of the event 
     (events spanning days must be added as separate events),
-    the start time of the event,
-    and a name for the event.
+    the <em>start time</em> of the event,
+    and a <em>description</em> of the event.
     See section <a href="#columns">Selecting columns for export</a>
     for more detail.</li>
   </ul>
@@ -48,8 +52,14 @@
 
 <h3>2. Loading your spreadsheet into xl2cal</h3>
 
+<figure>
+  <img src=init.png alt="Drag the spreadsheet file onto the landing site" width="600">
+  <figcaption>Figure 2: Drag the spreadsheet file onto the landing site labelled 
+    <span class="instr-landing">Drag and drop a spreadsheet file here</span> or
+    use the <span class="instr-button">Choose file</span> button.</figcaption>
+</figure>
 <p>
-  Load your spreadsheet into <em>xl2cal</em> by either: 
+  Load your spreadsheet (see Fig.&nbsp;2) into <em>xl2cal</em> by either: 
   <ul>
     <li>dragging the spreadsheet file onto the landing site labelled 
     <span class="instr-landing">Drag and drop a spreadsheet file here</span> or</li>
@@ -57,19 +67,16 @@
   </ul>
 </p>
 <p>
-  By default, <em>xl2cal</em> assumes that the sheet to use is the first 
-  in the spreadsheet. 
-  However, you can change this with the 
-  <span class="instr-box">Sheet name or number</span> box.
-  Note that sheets are numbered from 0.
-</p>
-<p>
-  You may also wish to select the calendar year for your calendar
+  You may also wish to select the expected calendar year for your calendar
   from the <span class="instr-box">Select Year</span> drop-down list on the left.
-  The default is the current year.
+  The default is the next calendar year, on the assumption that the calendar is
+  being created for the forthcoming year.<br>This is used for checking dates in your
+  calendar: a warning will be given if an event has a different year from this
+  year (but it will only be a warning and can be ignored if the event has the
+  correct year).
 </p>
 <p>
-  Set default duration of events with the <span class="instr-box">Duration</span> box.
+  You can set the default duration of events with the <span class="instr-box">Duration</span> box.
   Times may be hours (e.g. "2") or hours and minutes (e.g. "0:45" or "0.45").
 </p>
 <p>
@@ -79,10 +86,26 @@
 
 <h3>3. Selecting columns for export</h3>
 
+<figure>
+  <img src=loaded.png alt="The spreadsheet is loaded into xl2cal" width="600">
+  <figcaption>Figure 3: The spreadsheet is loaded into xl2cal.</figcaption>
+</figure>
 <p>
-  The cells of your spreadsheet will then be loaded into a table.
-  Cells in the first row of the table are column heading buttons.
-  Use these to select the columns used by your spreadsheet.
+  The cells of a sheet in your spreadsheet will then be loaded into a table
+  (Fig.&nbsp;3).
+  By default, <em>xl2cal</em> assumes that the sheet to use is the first 
+  in the spreadsheet. 
+  However, you can change this with the 
+  <span class="instr-box">Select sheet to use</span> box.
+  Note that sheets are numbered from 0.
+</p>
+<figure>
+  <img src=columns.png alt="Choose columns to use" width="600">
+  <figcaption>Figure 4: Choose columns to use.</figcaption>
+</figure>
+<p>
+  Cells in the first row of the table are used as column heading buttons.
+  Use these to select the columns used by your spreadsheet (Fig.&nbsp;4).
   Some columns are mandatory; others are optional.
 
 <h4>Mandatory columns</h4>
@@ -102,9 +125,9 @@
       cardinal (e.g. "6") <i>or</i> ordinal (e.g. "6th") numbers.<br>
 
       If months are specified, the <strong>Month</strong> column may contain either cardinal numbers
-      (e.g. "6), or month names or prefixes (e.g. "June" or "Jun").<br>
+      (e.g. "6"), or month names or prefixes (e.g. "June" or "Jun").<br>
       If a <strong>Date</strong> is specified, most Excel formats should work
-      (e.g. "Saturday 1 July", "1/6/2023", etc).
+      (e.g. "Saturday 1 July", "1/6/2023", etc.).
   </li>
 
   <li>A <strong>Start</strong> column. 
@@ -119,11 +142,17 @@
   <li>An <strong>Event</strong> column, describing the event.</li>
 </ol>
 
+<figure>
+  <img src=ready.png alt="Ready for export" width="600">
+  <figcaption>Figure 6: Once the mandatory columns have been selected, the
+  <span class="instr-button-enabled">Export</span> button is enabled.</figcaption>
+</figure>
+
 <h4>Optional columns</h4>
 
 These columns are optional and do not need to be selected.
 <ul>
-  <li>A high-water (<b>HW</b>) column.<br> 
+  <li>A high-water time (<b>HW</b>) column.<br> 
       If this column is specified,
       any entry in this column (e.g. "1500") will be appended to the
       entry in the <strong>Event</strong> column (e.g. "Race 1" becomes "Race 1, HW=1500").
@@ -185,42 +214,49 @@ These columns are optional and do not need to be selected.
   You have two choices if a warning pops up for a row with invalid data.
   <ul>
     <li>To continue generating your iCalendar without this row,
-        click <span class="instr-box">OK</span>.</li>
+        click <span class="instr-button">OK</span>.</li>
     <li>to cancel generating your iCalendar,
-        click <span class="instr-box">Cancel</span>.</li>
+        click <span class="instr-button">Cancel</span>.</li>
   </ul>
 </p>
 
 <h3>4. Selecting the calendars to export</h3>
 
-<p>
-  Click the <span class="instr-button">Export</span> button to start to generate your calendar in 
+  Click the <span class="instr-button-enabled">Export</span> button to start to generate your calendar in 
   iCalendar format.
   This button will only be enabled (with a blue background) if you have selected sufficient
   columns. 
 </p>
+<figure>
+  <img src=calendars.png alt="Select calendars to generate" width="600">
+  <figcaption>Figure 7: Select the calendars to generate.</figcaption>
+</figure>
 <p>
   If you have selected one of the columns of your spreadsheet as a "Calendars"
   column, 
   then a pop-up window will appear, 
   asking you to choose which calendar(s) to export.
   <em>xl2cal</em> will generate entries for rows with "Calendars" cells matching
-  the ones you have chosen.
+  the ones you have chosen (e.g.&nbsp;"Main" in Fig.&nbsp;7).
   If you do not choose any, 
   or if no "Calendar" column was selected,
   the iCalendar file generated will contain entries for all events.
-  Click the <span class="instr-button">Export</span> button to complete
+  Click the <span class="instr-button-enabled">Export</span> button to complete
   generating your calendar.
 </p>
 
 
 <h3>5. Download the schedule as an iCalendar file</h3>
 
+<figure>
+  <img src=ics.png alt="The Download window" width="600">
+  <figcaption>Figure 8: The Download window.</figcaption>
+</figure>
 <p>
   When the iCalendar has been generated,
-  a window will appear inviting you to download the calendar.
+  a window will appear inviting you to download the calendar (Fig.&nbsp;8).
   This window also displays the text of the iCalendar generated.
-  Click the <span class="instr-button">Download iCalendar</span> button at the top
+  Click the <span class="instr-button-enabled">Download iCalendar</span> button at the top
   of the window to download the iCalendar.
   You should choose to save the iCalendar in a file with extension 
   <code>.ics</code>.
@@ -236,7 +272,7 @@ These columns are optional and do not need to be selected.
     <li> Check the dates and times.</li>
     <li> Delete this calendar...</li>
     <li> ...but, if the entries are all correct, merge them into 
-         another calendar (e.g. I have a separate 'Sailing' calendar).</li>
+         another calendar (e.g. I have a separate "Sailing" calendar).</li>
   </ol>
 </p>
 

@@ -61,8 +61,13 @@ h1 {
   padding: 1.5em;
 }
 
-h2 {
+h2, h3 {
   margin-top: 2rem;
+  color: blue;
+}
+
+li + li {
+  margin-top: 0.4em;   /* gap only between items */
 }
 
 /*
@@ -238,6 +243,45 @@ label, input[type="checkbox"] {
 .instr-button {
   border: 1px solid black;
   white-space: nowrap;
+  padding: 0.1em 0.25em;
+}
+
+.instr-button-enabled {
+  border: 1px solid black;
+  white-space: nowrap;
   background-color: LightSkyBlue;
   padding: 0.1em 0.25em;
+}
+
+figure {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 1.5em auto;        /* centres the figure */
+  text-align: center;
+  box-sizing: border-box;
+  align-self: center;
+  justify-self: center;
+}
+
+figure img {
+  display: block;
+  width: auto !important;    /* never stretched to the column width */
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 0.75em;           /* white mat between the picture and the border */
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 4px 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+figure figcaption {
+  width: 0;                  /* stops a long caption from widening the figure... */
+  min-width: 80%;            /* ...while still making it 80% of the figure's width */
+  margin: 0.75em auto 0;     /* auto side margins keep it centred under the box */
+  font-style: italic;
+  font-size: 0.9em;
 }
