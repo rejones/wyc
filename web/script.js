@@ -121,6 +121,7 @@ let DEFAULT_DURATION_HOUR = DEFAULT_DEFAULT_DURATION_HOUR;
 let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 
 // Spreadsheet data
+const MAX_SPREADSHEET_BYTES = 1024*1024; // Maximum size of the spreadsheet
 let theSheet = 0;                        // The sheet to read
 const theData = [];                      // The data from the spreadsheet
 let allCalendars;                        // Calendars to use
@@ -260,6 +261,10 @@ function loadFile(file) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const data = new Uint8Array(e.target.result);
+    if (data.byteLength > MAX_SPREADSHEET_BYTES) {
+      if (!warnUserOrCancel(`Are you sure that ${file.name} is the right spreadsheet? It is very large (${data.byteLength} bytes).`))
+          return;
+    }
     const workbook = XLSX.read(data, { cellStyles: true, type: 'array' });
     let sheetName;
     const options = { skipHidden: true, raw: false, header: 1 };
