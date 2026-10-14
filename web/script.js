@@ -121,7 +121,8 @@ let DEFAULT_DURATION_HOUR = DEFAULT_DEFAULT_DURATION_HOUR;
 let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 
 // Spreadsheet data
-const MAX_SPREADSHEET_BYTES = 1024*1024; // Maximum size of the spreadsheet
+const MAX_COLUMNS = 60;                  // Maximum number of columns for decent performance
+const MAX_ROWS = 1000;                   // Maximum number of rows for decent performance
 let theSheet = 0;                        // The sheet to read
 const theData = [];                      // The data from the spreadsheet
 let allCalendars;                        // Calendars to use
@@ -252,20 +253,41 @@ function loadFileEvent(event) {
 
 
 /**
+ * Check that sheet dimensions are reasonable
+ * @param sheet the sheet
+ * @param name the name of the sheet
+ * @return true if the sheet is a reasonable size, false otherwise
+ */
+function checkSize(sheet, name) {
+  // range is an object with start (s) and end (e) properties for rows (r) and columns (c),
+  // all zero-indexed
+  const range = XLSX.utils.decode_range(sheet['!ref']);
+  if (range.e.c > MAX_COLUMNS) {
+    alert(`Sheet "${name}" has too many columns (${range.e.c + 1}).`);
+    return false;
+  }
+  if (range.e.r > MAX_ROWS) {
+    alert(`Sheet "${name}" has too many rows (${range.e.r + 1}).`);
+    return false;
+  }
+  return true;
+}
+
+
+/**
  * Read the spreadsheet and render it in the document
  * @param {File} file - The file loaded
  */
 function loadFile(file) {
   //console.log(file.name);
 
+  let ok = true;
   const reader = new FileReader();
   reader.onload = function (e) {
     const data = new Uint8Array(e.target.result);
-    if (data.byteLength > MAX_SPREADSHEET_BYTES) {
-      if (!warnUserOrCancel(`Are you sure that ${file.name} is the right spreadsheet? It is very large (${data.byteLength} bytes).`))
-          return;
-    }
+
     const workbook = XLSX.read(data, { cellStyles: true, type: 'array' });
+
     let sheetName;
     const options = { skipHidden: true, raw: false, header: 1 };
 
@@ -273,6 +295,13 @@ function loadFile(file) {
       // only one sheet
       sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
+
+      /* Check that this sheet is a reasonable size */
+      if (!checkSize(sheet, sheetName)) {
+        ok = false;
+        return;
+      }
+
       jsonData = XLSX.utils.sheet_to_json(sheet, options);
       replaceSheetGroup();
       addSpreadsheetHeading();
@@ -297,6 +326,13 @@ function loadFile(file) {
       select.addEventListener('change', (event) => {
         sheetName = event.target.value;
         const sheet = workbook.Sheets[sheetName];
+
+        /* Check that this sheet is a reasonable size */
+        if (!checkSize(sheet, sheetName)) {
+          ok = false;
+          return;
+        }
+
         jsonData = XLSX.utils.sheet_to_json(sheet, options);
         renderTable(jsonData);
       });
@@ -314,13 +350,22 @@ function loadFile(file) {
       // Assume the first sheet initially
       sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
+
+      /* Check that this sheet is a reasonable size */
+      if (!checkSize(sheet, sheetName)) {
+      ok = false;
+        return;
+      }
+
       jsonData = XLSX.utils.sheet_to_json(sheet, options);
       // Clear any previous column selections
       renderTable(jsonData);
     }
   };
 
-  reader.readAsArrayBuffer(file);
+  if (ok) 
+    reader.readAsArrayBuffer(file);
+  return ok;
 }
 
 
@@ -355,6 +400,7 @@ function addSpreadsheetHeading() {
 
 /**
  * Parse and render the spreadsheet on screen as a table
+ * Note: use DOM calls rather than string to guard against HTML injection
  * @param {Array} data - The sheet to parse and display
  */
 function renderTable(data) {
@@ -652,7 +698,7 @@ function exportCalendar() {
 
 
 /**
- * Escape special characters
+ * Escape special characters to prevent break outs
  * @param s a string that may contain special characters
  * @return the string with characters replace by HTML codes
  */
@@ -1162,7 +1208,7 @@ function openICalWindow(calendarsToExport, iCal) {
   }
   console.log('filename', filename);
   //heading.innerHTML = title; 
-  heading.textContent = title; 
+  heading.textContent = title;   // textContent rather than innerHTML to prevent injection
   newWindow.document.body.appendChild(heading);
 
   const blob = new Blob([iCal], {type:'text/plain'});
@@ -1182,10 +1228,21 @@ function openICalWindow(calendarsToExport, iCal) {
 }
 
 
+/**
+ * Abort execution
+ *  @param msg The abort message
+ */
+function abort(msg) {
+  console.warn(msg);
+  alert(msg);
+}
+
+
 const OKCancel = '\n(Press OK to continue or Cancel to abort)';
 /**
  * Warn user and log
  * @param msg The alert message
+ * @return true if user wants to continue, else false
  */
 function warnUserOrCancel(msg) {
   console.warn(msg);
