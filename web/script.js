@@ -32,8 +32,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-*/
+'use strict';
 
 const dayNames = ['Sun', 'Mon', 'Tues', 'Weds', 'Thurs', 'Fri', 'Sat'];
 const monthNames = ['January','February','March','April','May','June','July','August',
@@ -438,7 +437,7 @@ function renderTable(data) {
   theData.length = 0; // clear in case user has added the spreadsheet more than once
   for (const row of data) {
     const tr = document.createElement('tr');
-    newRow = [];
+    let newRow = [];
     
     //console.log(row);
     for (const cell of row) {
