@@ -122,7 +122,7 @@ let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 
 // Spreadsheet data
 const MAX_COLUMNS = 60;                  // Maximum number of columns for decent performance
-const MAX_ROWS = 1000;                   // Maximum number of rows for decent performance
+const MAX_ROWS = 10;//00;                   // Maximum number of rows for decent performance
 let theSheet = 0;                        // The sheet to read
 const theData = [];                      // The data from the spreadsheet
 let allCalendars;                        // Calendars to use
@@ -149,14 +149,28 @@ window.onerror = function (evt, source, lineno, colno, error) {
             "You must use https:");
   } 
   else {
-    if (!(error instanceof AbortError)) {
-      console.warn(`Unexpected error at line ${lineno}!\n`, evt, error);
-      alert(`Unexpected error at line ${lineno}!\n` +
-             error +
-             "\nPlease report");
-     }
+    console.warn(`Unexpected error at line ${lineno}!\n`, evt, error);
+    alert(`Unexpected error at line ${lineno}!\n` +
+           error +
+           "\nPlease report");
   }
 }
+
+
+/**
+ * Report errors
+ * @param e the error
+ * @throws e if not otherwise caught
+ */
+function reportError(e) {
+  if (e instanceof AbortError) {
+    console.warn(e.message);
+    alert(e.message);          // a deliberate, user-readable stop
+  } else {
+    throw e;                   // real bugs still reach window.onerror
+  }
+}
+
 
 crypto.randomUUID(); // Check early for https: (or file:) not http:
 
@@ -256,21 +270,16 @@ function loadFileEvent(event) {
  * Check that sheet dimensions are reasonable
  * @param sheet the sheet
  * @param name the name of the sheet
- * @return true if the sheet is a reasonable size, false otherwise
+ * @throws Error if too many rows or columns
  */
 function checkSize(sheet, name) {
   // range is an object with start (s) and end (e) properties for rows (r) and columns (c),
   // all zero-indexed
   const range = XLSX.utils.decode_range(sheet['!ref']);
-  if (range.e.c > MAX_COLUMNS) {
-    alert(`Sheet "${name}" has too many columns (${range.e.c + 1}).`);
-    return false;
-  }
-  if (range.e.r > MAX_ROWS) {
-    alert(`Sheet "${name}" has too many rows (${range.e.r + 1}).`);
-    return false;
-  }
-  return true;
+  if (range.e.c > MAX_COLUMNS) 
+    throw new AbortError(`Sheet "${name}" has too many columns (${range.e.c + 1}).`);
+  if (range.e.r > MAX_ROWS) 
+    throw new AbortError(`Sheet "${name}" has too many rows (${range.e.r + 1}).`);
 }
 
 
@@ -281,91 +290,84 @@ function checkSize(sheet, name) {
 function loadFile(file) {
   //console.log(file.name);
 
-  let ok = true;
   const reader = new FileReader();
+  //reader.onerror = () => alert('Could not read the file.');
   reader.onload = function (e) {
-    const data = new Uint8Array(e.target.result);
-
-    const workbook = XLSX.read(data, { cellStyles: true, type: 'array' });
-
-    let sheetName;
-    const options = { skipHidden: true, raw: false, header: 1 };
-
-    if (workbook.SheetNames.length == 1) {
-      // only one sheet
-      sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-
-      /* Check that this sheet is a reasonable size */
-      if (!checkSize(sheet, sheetName)) {
-        ok = false;
-        return;
-      }
-
-      jsonData = XLSX.utils.sheet_to_json(sheet, options);
-      replaceSheetGroup();
-      addSpreadsheetHeading();
-      const sheetChooser = document.getElementById("sheet-names");
-      sheetChooser.replaceChildren();
-      renderTable(jsonData);
-    } 
-    else { 
-      // choose sheet from drop-down list
-      replaceSheetGroup();
-      addSpreadsheetHeading();
-      const select = document.createElement("select");
-      select.id = "select-sheet";
-
-      workbook.SheetNames.forEach(function(sh) {
-        const option = document.createElement("option");
-        option.value = sh;
-        option.text = sh;
-        select.appendChild(option);       
-      });
-
-      select.addEventListener('change', (event) => {
-        sheetName = event.target.value;
+    try {
+      const data = new Uint8Array(e.target.result);
+  
+      const workbook = XLSX.read(data, { cellStyles: true, type: 'array' });
+  
+      let sheetName;
+      const options = { skipHidden: true, raw: false, header: 1 };
+  
+      if (workbook.SheetNames.length == 1) {
+        // only one sheet
+        sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-
-        /* Check that this sheet is a reasonable size */
-        if (!checkSize(sheet, sheetName)) {
-          ok = false;
-          return;
-        }
-
+  
+        checkSize(sheet, sheetName); // Check that this sheet is a reasonable size
         jsonData = XLSX.utils.sheet_to_json(sheet, options);
+        replaceSheetGroup();
+        addSpreadsheetHeading();
+        const sheetChooser = document.getElementById("sheet-names");
+        sheetChooser.replaceChildren();
         renderTable(jsonData);
-      });
-
-      const div = document.createElement("div");
-      div.style.display = "flex";
-      const label = document.createElement("label");
-      label.innerHTML = 'Select sheet to use:';
-      label.htmlFor = "select-sheet";
-      div.appendChild(label);
-      div.appendChild(select);
-      const sheetChooser = document.getElementById("sheet-names");
-      sheetChooser.replaceChildren(div);   // Replace any previous div
-
-      // Assume the first sheet initially
-      sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-
-      /* Check that this sheet is a reasonable size */
-      if (!checkSize(sheet, sheetName)) {
-      ok = false;
-        return;
+      } 
+      else { 
+        // choose sheet from drop-down list
+        replaceSheetGroup();
+        addSpreadsheetHeading();
+        const select = document.createElement("select");
+        select.id = "select-sheet";
+  
+        workbook.SheetNames.forEach(function(sh) {
+          const option = document.createElement("option");
+          option.value = sh;
+          option.text = sh;
+          select.appendChild(option);       
+        });
+  
+        select.addEventListener('change', (event) => {
+          try {
+            sheetName = event.target.value;
+            const sheet = workbook.Sheets[sheetName];
+            checkSize(sheet, sheetName); // Check that this sheet is a reasonable size
+            jsonData = XLSX.utils.sheet_to_json(sheet, options);
+            renderTable(jsonData);
+          }
+          catch (e) {
+            reportError(e);
+          }
+        });
+  
+        const div = document.createElement("div");
+        div.style.display = "flex";
+        const label = document.createElement("label");
+        label.innerHTML = 'Select sheet to use:';
+        label.htmlFor = "select-sheet";
+        div.appendChild(label);
+        div.appendChild(select);
+        const sheetChooser = document.getElementById("sheet-names");
+        sheetChooser.replaceChildren(div);   // Replace any previous div
+  
+        // Assume the first sheet initially
+        sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        checkSize(sheet, sheetName); // Check that this sheet is a reasonable size
+        jsonData = XLSX.utils.sheet_to_json(sheet, options);
+        // Clear any previous column selections
+        renderTable(jsonData);
       }
-
-      jsonData = XLSX.utils.sheet_to_json(sheet, options);
-      // Clear any previous column selections
-      renderTable(jsonData);
+    }
+    catch (e) {
+      reportError(e);
+      return false;
     }
   };
-
-  if (ok) 
-    reader.readAsArrayBuffer(file);
-  return ok;
+  
+  reader.readAsArrayBuffer(file);
+  return true;
 }
 
 
