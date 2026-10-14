@@ -122,10 +122,10 @@ let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 
 // Spreadsheet data
 const MAX_COLUMNS = 60;                  // Maximum number of columns for decent performance
-const MAX_ROWS = 10;//00;                   // Maximum number of rows for decent performance
+const MAX_ROWS = 1000;                   // Maximum number of rows for decent performance
 let theSheet = 0;                        // The sheet to read
 const theData = [];                      // The data from the spreadsheet
-let allCalendars;                        // Calendars to use
+let calendarsFound;                      // Calendars found in the spreadsheet
 
 /** Export button for spreadsheet should only be created once */
 let hasExportBtn = false;
@@ -148,7 +148,7 @@ window.onerror = function (evt, source, lineno, colno, error) {
       alert("It looks like you have accessed this page with the http: protocol.\n" +
             "You must use https:");
   } 
-  else {
+  else if (!(error instanceof AbortError)) {
     console.warn(`Unexpected error at line ${lineno}!\n`, evt, error);
     alert(`Unexpected error at line ${lineno}!\n` +
            error +
@@ -204,7 +204,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Allow user to choose a default duration for an event
   const durationBox = document.getElementById('duration');
   durationBox.addEventListener('change', () => {
-    duration = durationBox.value;
+    const duration = durationBox.value;
     let matchTime;
     if (duration) {
       matchTime = duration.match(/^(\d\d?)([:\.]\d\d)?/);
@@ -273,6 +273,9 @@ function loadFileEvent(event) {
  * @throws Error if too many rows or columns
  */
 function checkSize(sheet, name) {
+  if (!sheet || !sheet['!ref'])        // empty sheet
+    return;
+
   // range is an object with start (s) and end (e) properties for rows (r) and columns (c),
   // all zero-indexed
   const range = XLSX.utils.decode_range(sheet['!ref']);
@@ -291,7 +294,7 @@ function loadFile(file) {
   //console.log(file.name);
 
   const reader = new FileReader();
-  //reader.onerror = () => alert('Could not read the file.');
+  reader.onerror = () => alert('Could not read the file.');
   reader.onload = function (e) {
     try {
       const data = new Uint8Array(e.target.result);
@@ -299,6 +302,7 @@ function loadFile(file) {
       const workbook = XLSX.read(data, { cellStyles: true, type: 'array' });
   
       let sheetName;
+      let jsonData;
       const options = { skipHidden: true, raw: false, header: 1 };
   
       if (workbook.SheetNames.length == 1) {
@@ -362,7 +366,6 @@ function loadFile(file) {
     }
     catch (e) {
       reportError(e);
-      return false;
     }
   };
   
@@ -659,23 +662,28 @@ function cancelSelect() {
  *    to be generated
  */
 function exportSelect() {
-  const calendarsToExport = new Set();
-  if (columns.has(CCALENDAR) && (calendarsFound.size > 0)) {
-    const checkedCalendars = document.querySelectorAll('input[name=calendar-checkbox]:checked');
-    checkedCalendars.forEach(function(cal) {
-      calendarsToExport.add(cal.value);
-    });
-    //setCalendarsToExport(calendarsToExport);
-    modal.close();
-  }
-
-  // Generate iCal
-  const iCal = generateICal(theData, calendarsToExport);
-  if (iCal) {
-    //console.log(iCal);
+  try {
+    const calendarsToExport = new Set();
+    if (columns.has(CCALENDAR) && (calendarsFound.size > 0)) {
+      const checkedCalendars = document.querySelectorAll('input[name=calendar-checkbox]:checked');
+      checkedCalendars.forEach(function(cal) {
+        calendarsToExport.add(cal.value);
+      });
+      //setCalendarsToExport(calendarsToExport);
+      modal.close();
+    }
   
-    //Open new window with iCal data
-    openICalWindow(calendarsToExport, iCal);
+    // Generate iCal
+    const iCal = generateICal(theData, calendarsToExport);
+    if (iCal) {
+      //console.log(iCal);
+    
+      //Open new window with iCal data
+      openICalWindow(calendarsToExport, iCal);
+    }
+  } catch (e) {
+    if (!(e instanceof AbortError)) 
+      throw e; 
   }
 }
 
@@ -686,7 +694,7 @@ function exportSelect() {
  */
 function exportCalendar() {
   // First, search the spreadsheet for calendars, if any
-  allCalendars = calendarsFound = findCalendars();
+  calendarsFound = findCalendars();
   console.log(calendarsFound, calendarsFound.size);
   if (calendarsFound.size > 0) {
     // If any found, ask which calendars to use
@@ -872,7 +880,7 @@ function generateICal(data, calendarsToExport) {
 
   // Process the source file
   for (let lineNum in data) {
-    line = data[lineNum];
+    let line = data[lineNum];
     if (!line || !line.length) {
       continue;
     }
@@ -1127,6 +1135,33 @@ function icsText(s) {
 }
 
 
+const MAX_LINE_OCTETS = 75;       // RFC 5545 limit, excluding the line break
+const utf8 = new TextEncoder();
+
+/**
+ * Fold a content line to at most 75 octets per line, as RFC 5545 requires.
+ * Continuation lines begin with a single space, which counts towards the 75.
+ * Counts UTF-8 octets, not characters, and never splits a multi-byte character.
+ * @param {string} line The unfolded content line (no line break)
+ * @param {string} eol  The line break to use (default '\n', matching the rest of the output)
+ * @return {string} The folded line
+ */
+function foldLine(line, eol = '\n') {
+  let out = '';
+  let octets = 0;
+  for (const ch of line) {                // iterates by code point, so surrogate pairs stay whole
+    const n = utf8.encode(ch).length;     // 1 to 4 octets
+    if (octets + n > MAX_LINE_OCTETS) {
+      out += eol + ' ';                   // start a continuation line
+      octets = 1;                         // the leading space counts
+    }
+    out += ch;
+    octets += n;
+  }
+  return out;
+}
+
+
 /**
  * Print iCalendar entry
  * @param DTSTAMP   The DTSTAMP
@@ -1151,6 +1186,7 @@ function printICAL (DTSTAMP, theDay, theMonth, theYear, theStart, theMin,
   const day = theYear.padStart(4, '0') + theMonth.padStart(2, '0') + theDay.padStart(2, '0');
   const start = convHourUTC(theYear, theMonth, theDay, theStart) + theMin + '00';
   const end = convHourUTC(theYear, theMonth, theDay, theEnd) + theEndMin + '00';
+  /*
   let alarm = start - ALERT;
   if (alarm < 0) { 
     warnUserOrCancel(`Alarm set for previous day: ${theEvent}`);
@@ -1158,7 +1194,9 @@ function printICAL (DTSTAMP, theDay, theMonth, theYear, theStart, theMin,
   } else { 
     alarm = String(alarm).padStart(4, '0');
   }
+  */
   const uid = crypto.randomUUID(); // Requires https: (or file:) not http:
+  const eventText = icsText(thePrefix + summary);
   const entry = 
 `BEGIN:VEVENT
 CREATED:${DTSTAMP}${Z}
@@ -1166,11 +1204,11 @@ UID:${uid}
 DTSTAMP:${DTSTAMP}${Z}
 DTSTART:${day}${T}${start}${Z}
 DTEND:${day}${T}${end}${Z}
-SUMMARY:${icsText(thePrefix + summary)}
+${foldLine('SUMMARY:' + eventText)}
 BEGIN:VALARM
 TRIGGER:-PT${ALERT}H
 ACTION:DISPLAY
-DESCRIPTION:${thePrefix}${summary}
+${foldLine('DESCRIPTION:' + eventText)}
 END:VALARM
 END:VEVENT
 `;
