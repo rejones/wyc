@@ -120,6 +120,7 @@ let DEFAULT_DURATION_HOUR = DEFAULT_DEFAULT_DURATION_HOUR;
 let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 
 // Spreadsheet data
+const MAX_SPREADSHEET_SIZE = 1024 * 1024;// Maximum spreadsheet size
 const MAX_COLUMNS = 60;                  // Maximum number of columns for decent performance
 const MAX_ROWS = 1000;                   // Maximum number of rows for decent performance
 let theSheet = 0;                        // The sheet to read
@@ -165,7 +166,11 @@ function reportError(e) {
   if (e instanceof AbortError) {
     console.warn(e.message);
     alert(e.message);          // a deliberate, user-readable stop
-  } else {
+  } 
+  else if (e.message.includes("not a spreadsheet"))  {
+    alert(e.message);
+  }
+  else {
     throw e;                   // real bugs still reach window.onerror
   }
 }
@@ -239,6 +244,12 @@ function dropHandler(ev) {
     ev.dataTransfer.files[0];
   if (item.kind === "file") {
     const file = item.getAsFile();
+    if (!file)
+      return;
+    if (!/\.xlsx$/i.test(file.name)) { 
+      alert('Please choose an .xlsx spreadsheet.'); 
+      return;
+    }  
     // set file.name in the fileChooser
     document.getElementById('file-chooser').files = ev.dataTransfer.files;
     loadFile(file);
@@ -261,6 +272,8 @@ function dragOverHandler(ev) {
  */
 function loadFileEvent(event) {
   const file = event.target.files[0];
+  if (!file)
+    return;
   loadFile(file);
 }
 
@@ -278,9 +291,9 @@ function checkSheetSize(sheet, name) {
   // range is an object with start (s) and end (e) properties for rows (r) and columns (c),
   // all zero-indexed
   const range = XLSX.utils.decode_range(sheet['!ref']);
-  if (range.e.c > MAX_COLUMNS) 
+  if (range.e.c + 1> MAX_COLUMNS) 
     throw new AbortError(`Sheet "${name}" has too many columns (${range.e.c + 1}).`);
-  if (range.e.r > MAX_ROWS) 
+  if (range.e.r + 1> MAX_ROWS) 
     throw new AbortError(`Sheet "${name}" has too many rows (${range.e.r + 1}).`);
 }
 
@@ -291,6 +304,10 @@ function checkSheetSize(sheet, name) {
  */
 function loadFile(file) {
   //console.log(file.name);
+  if (file.size >  MAX_SPREADSHEET_SIZE) {
+    alert(`${file.name} is too large.`);
+    return;
+  }
 
   const reader = new FileReader();
   reader.onerror = () => alert('Could not read the file.');
@@ -722,7 +739,7 @@ function escapeHTML(s) {
  * @param calendarsFound - The calendars found in the CCALENDAR column
  */
 function selectCalendars(calendarsFound) {
-  modal = new SV.Modal('select-calendars-modal');
+  if (!modal) modal = new SV.Modal('select-calendars-modal');
   /*
   modal.getModalElement().addEventListener('sv.modal.close', function (ev) {
     console.log('Closed the modal');
@@ -1259,12 +1276,26 @@ function printEOCAL() {
 
 
 /**
+ * Sanitise the name of the download file
+ * @param name the raw name
+ * @return the sanitised name
+ */
+function safeFilename(name) {
+  return name.replace(/[^\p{L}\p{N}_-]+/gu, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'myCalendar';
+}
+
+
+/**
  * Open a new window with a download link
  * @param calendarsToExport The names of the calendars chosen for export
  * @param iCal The iCalendar data
  */
 function openICalWindow(calendarsToExport, iCal) {
   const newWindow = window.open('', '_blank', 'width=400,height=400');
+  if (!newWindow) {
+    alert('Please allow pop-ups for this page to see the calendar.'); 
+    return; 
+  }
   newWindow.opener = null;
   newWindow.document.write('<html><head><title>Export iCalendar</title><link rel="stylesheet" type="text/css" href="styles.css"></head><body>');
 
@@ -1273,7 +1304,7 @@ function openICalWindow(calendarsToExport, iCal) {
   let filename;
   if (calendarsToExport.size > 0) {
     title += ' for ' + Array.from(calendarsToExport).join(', ');
-    filename = Array.from(calendarsToExport).join('')+'.ics';
+    filename = safeFilename(Array.from(calendarsToExport).join('')) +'.ics';
   } else {
     filename = 'myCalendar.ics';
   }
@@ -1282,7 +1313,7 @@ function openICalWindow(calendarsToExport, iCal) {
   heading.textContent = title;   // textContent rather than innerHTML to prevent injection
   newWindow.document.body.appendChild(heading);
 
-  const blob = new Blob([iCal], {type:'text/plain'});
+  const blob = new Blob([iCal], {type:'text/calendar;charset=utf-8'});
   const link = newWindow.document.createElement("a");
   link.id = 'download-link';
   link.download = filename;
@@ -1296,6 +1327,7 @@ function openICalWindow(calendarsToExport, iCal) {
   pre.textContent = iCal; 
   newWindow.document.body.appendChild(pre);
   newWindow.document.write('</body></html>');
+  newWindow.addEventListener('pagehide', () => URL.revokeObjectURL(link.href));
 }
 
 
