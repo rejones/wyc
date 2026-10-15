@@ -271,7 +271,7 @@ function loadFileEvent(event) {
  * @param name the name of the sheet
  * @throws Error if too many rows or columns
  */
-function checkSize(sheet, name) {
+function checkSheetSize(sheet, name) {
   if (!sheet || !sheet['!ref'])        // empty sheet
     return;
 
@@ -309,7 +309,7 @@ function loadFile(file) {
         sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
   
-        checkSize(sheet, sheetName); // Check that this sheet is a reasonable size
+        checkSheetSize(sheet, sheetName); // Check that this sheet is a reasonable size
         jsonData = XLSX.utils.sheet_to_json(sheet, options);
         replaceSheetGroup();
         addSpreadsheetHeading();
@@ -335,7 +335,7 @@ function loadFile(file) {
           try {
             sheetName = event.target.value;
             const sheet = workbook.Sheets[sheetName];
-            checkSize(sheet, sheetName); // Check that this sheet is a reasonable size
+            checkSheetSize(sheet, sheetName); // Check that this sheet is a reasonable size
             jsonData = XLSX.utils.sheet_to_json(sheet, options);
             renderTable(jsonData);
           }
@@ -357,7 +357,7 @@ function loadFile(file) {
         // Assume the first sheet initially
         sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        checkSize(sheet, sheetName); // Check that this sheet is a reasonable size
+        checkSheetSize(sheet, sheetName); // Check that this sheet is a reasonable size
         jsonData = XLSX.utils.sheet_to_json(sheet, options);
         // Clear any previous column selections
         renderTable(jsonData);
@@ -892,10 +892,7 @@ function generateICal(data, calendarsToExport) {
     const start = line[startCol];
     if ( !start || !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) {
       console.warn(`Ignoring line ${lineNum} ${line}: no start time specified`);
-      if (!warnUserOrCancel(`Ignoring line ${lineNum} ${line}: no start time specified`)) {
-        text = null;
-        return null;
-      }
+      continue;
     }
 
     // Skip rows for unwanted calendars
@@ -1151,26 +1148,48 @@ const MAX_LINE_OCTETS = 75;       // RFC 5545 limit, excluding the line break
 const utf8 = new TextEncoder();
 
 /**
- * Fold a content line to at most 75 octets per line, as RFC 5545 requires.
- * Continuation lines begin with a single space, which counts towards the 75.
- * Counts UTF-8 octets, not characters, and never splits a multi-byte character.
+ * Fold a content line to at most 75 octets per line (RFC 5545), breaking
+ * between words where possible. Counts UTF-8 octets, never splits a
+ * multi-byte character, and only breaks mid-word if a single word is
+ * longer than a whole line.
  * @param {string} line The unfolded content line (no line break)
- * @param {string} eol  The line break to use (default '\n', matching the rest of the output)
+ * @param {string} eol  The line break to use (default '\n')
  * @return {string} The folded line
  */
 function foldLine(line, eol = '\n') {
-  let out = '';
-  let octets = 0;
-  for (const ch of line) {                // iterates by code point, so surrogate pairs stay whole
-    const n = utf8.encode(ch).length;     // 1 to 4 octets
-    if (octets + n > MAX_LINE_OCTETS) {
-      out += eol + ' ';                   // start a continuation line
-      octets = 1;                         // the leading space counts
+  const chars = Array.from(line);                       // by code point, so surrogate pairs stay whole
+  const sizes = chars.map(c => utf8.encode(c).length);  // 1 to 4 octets each
+  const pieces = [];
+  let start = 0;
+
+  while (start < chars.length) {
+    // The first line holds 75 octets; a continuation line has a leading
+    // fold space that uses one of its 75, leaving 74 for its content.
+    const capacity = pieces.length === 0 ? MAX_LINE_OCTETS : MAX_LINE_OCTETS - 1;
+
+    // Greedily take as many characters as fit
+    let end = start;
+    let octets = 0;
+    while (end < chars.length && octets + sizes[end] <= capacity) {
+      octets += sizes[end];
+      end++;
     }
-    out += ch;
-    octets += n;
+
+    if (end < chars.length) {                           // the rest won't fit: we must break
+      // Prefer to break just before a space, so words stay whole
+      let brk = end;                                    // a break at 'end' is before chars[end]
+      while (brk > start && chars[brk] !== ' ') brk--;
+      if (brk > start) {
+        while (brk > start + 1 && chars[brk - 1] === ' ') brk--;  // no trailing spaces on the line
+        end = brk;
+      }
+      // else: one word longer than a line; break at 'end' (mid-word)
+    }
+
+    pieces.push(chars.slice(start, end).join(''));
+    start = end;
   }
-  return out;
+  return pieces.join(eol + ' ');                        // continuation lines begin with one space
 }
 
 
@@ -1283,11 +1302,11 @@ function openICalWindow(calendarsToExport, iCal) {
 /**
  * Abort execution
  *  @param msg The abort message
- */
 function abort(msg) {
   console.warn(msg);
   alert(msg);
 }
+ */
 
 
 const OKCancel = '\n(Press OK to continue or Cancel to abort)';
