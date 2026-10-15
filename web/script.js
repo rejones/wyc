@@ -807,6 +807,7 @@ function parseDate(rowDate) {
   }
   
   // Next, try dd/mm/yy
+  let matchDate;
   if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)\/(\d{2,4})$/)) {
     const day = matchDate[1];
     const month = matchDate[2];
@@ -891,7 +892,10 @@ function generateICal(data, calendarsToExport) {
     const start = line[startCol];
     if ( !start || !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) {
       console.warn(`Ignoring line ${lineNum} ${line}: no start time specified`);
-      continue;
+      if (!warnUserOrCancel(`Ignoring line ${lineNum} ${line}: no start time specified`)) {
+        text = null;
+        return null;
+      }
     }
 
     // Skip rows for unwanted calendars
@@ -982,7 +986,10 @@ function generateICal(data, calendarsToExport) {
     let theEvent = line[columns.get(CEVENT)];
     if ( !theEvent ) {
       console.warn(`Ignoring line ${lineNum} ${line}: no event specified`);
-      continue;
+      if(!warnUserOrCancel(`Ignoring line ${lineNum} ${line}: no event specified`)) {
+        text = null;
+        return null;
+      }
     }
 
     // Get the start and end times
@@ -1023,8 +1030,11 @@ function generateICal(data, calendarsToExport) {
       if (matchTime = line[endCol].match(/^(\d\d?)[:\.]?(\d\d)/)) {
         if ((+theHour > + matchTime[1]) ||
             ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
-          warnUserOrCancel(`Event on line ${lineNum} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
-                `${line[startCol]} and ${line[endCol]}`);
+          if (!warnUserOrCancel(`Event on line ${lineNum} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
+                `${line[startCol]} and ${line[endCol]}`)) {
+            text = null;
+            return null;
+          }
         }
         theEndHour = matchTime[1];
         theEndMin = matchTime[2];
@@ -1064,7 +1074,10 @@ function generateICal(data, calendarsToExport) {
       theEndMin -= 60;
     }
     if (theEndHour >= 24) {
-      warnUserOrCancel(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`);
+      if (!warnUserOrCancel(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`)) {
+        text = null;
+        return null;
+      }
       theEndHour = '23';
       theEndMin = '59';
     }
