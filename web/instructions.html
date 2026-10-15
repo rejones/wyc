@@ -44,10 +44,17 @@
     for more detail.</li>
   </ul>
   All event rows must provide this information.
-  Any row that does not look like an event is ignored. 
+  <em>Any row that does not look like an event is ignored.</em> 
   Examples of ones that will be ignored include heading rows, blank rows, 
   any rows without at least a date, start time and event name,
-  etc.
+  etc. 
+  If you do not yet have a start time for an event, 
+  use "TBA", "TBC", "NA" or "N/A", all of which are accepted as valid times.
+</p>
+<p>
+NOTE: In order to run at a reasonable speed, <em>xl2cal</em> imposes limits
+on the size of a spreadsheet. The maximum number of rows is 1,000; the maximum
+number of columns is 60.
 </p>
 
 <h3>2. Loading your spreadsheet into xl2cal</h3>
