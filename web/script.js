@@ -167,9 +167,6 @@ function reportError(e) {
     console.warn(e.message);
     alert(e.message);          // a deliberate, user-readable stop
   } 
-  else if (e.message.includes("not a spreadsheet"))  {
-    alert(e.message);
-  }
   else {
     throw e;                   // real bugs still reach window.onerror
   }
@@ -188,8 +185,11 @@ crypto.randomUUID(); // Check early for https: (or file:) not http:
 window.addEventListener('DOMContentLoaded', () => {
   const fileChooser = document.getElementById('file-chooser');
   const yearDropdown = document.getElementById('year-dropdown');
+  const dz = document.getElementById('drop-zone');
   
   fileChooser.addEventListener('change', loadFileEvent);
+  dz.addEventListener('drop', dropHandler);
+  dz.addEventListener('dragover', dragOverHandler);
 
   // Generate the range of years
   const currentYear = new Date().getFullYear();
@@ -315,7 +315,13 @@ function loadFile(file) {
     try {
       const data = new Uint8Array(e.target.result);
   
-      const workbook = XLSX.read(data, { cellStyles: true, type: 'array' });
+      let workbook;
+      try {
+        workbook = XLSX.read(data, { cellStyles: true, type: 'array' });
+      }
+      catch (e) {
+        throw new AbortError(`${file.name} could not be read as an .xlsx spreadsheet.`);
+      }
   
       let sheetName;
       let jsonData;
@@ -761,11 +767,17 @@ function selectCalendars(calendarsFound) {
     <p>If no calendars are selected, all will be exported.</p>
   `;
   html += `
-      <button id="cancel-calendar-choice-button" onclick="cancelSelect()">Cancel</button>
-      <button id="export-calendar-choice-button" onclick="exportSelect()">Export</button>
+      <button id="cancel-calendar-choice-button">Cancel</button>
+      <button id="export-calendar-choice-button">Export</button>
   `;
+      //<button id="cancel-calendar-choice-button" onclick="cancelSelect()">Cancel</button>
+      //<button id="export-calendar-choice-button" onclick="exportSelect()">Export</button>
 
   modal.inject(html, 'Select calendars to export');
+  modal.getContentElement().querySelector('#cancel-calendar-choice-button')
+    .addEventListener('click', cancelSelect);
+  modal.getContentElement().querySelector('#export-calendar-choice-button')
+    .addEventListener('click', exportSelect);
   modal.show();
 }
 
@@ -939,7 +951,7 @@ function generateICal(data, calendarsToExport) {
         }
         theMonth = 0 + mth;
         if (theMonth < 1 || theMonth > 12) {
-          bad(`Invalid month ${month} ${lineMonth} ${line[monthCol]}`, lineNum, line[eventCol]);
+          bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, lineNum, line[eventCol]);
           continue;
         }
       }
@@ -973,7 +985,7 @@ function generateICal(data, calendarsToExport) {
       if ((dayMonthYear.length === 3) &&
           (dayMonthYear[2] != theDefaultYear)) {
         if (!warnUserOrCancel(`Year (${dayMonthYear[2]}) on line ${lineNum} differs from ${theDefaultYear}\nIs this what you meant?`)) {
-            text = null;
+            //text = null;
             return null;
         }
       }
@@ -1001,9 +1013,9 @@ function generateICal(data, calendarsToExport) {
     if ( !theEvent ) {
       console.warn(`Ignoring line ${lineNum} ${line}: no event specified`);
       if(!warnUserOrCancel(`Ignoring line ${lineNum} ${line}: no event specified`)) {
-        text = null;
         return null;
       }
+      continue;
     }
 
     // Get the start and end times

@@ -4,6 +4,10 @@
   <title>xl2cal: Create iCalendar from Excel</title>
   <link rel="stylesheet" type="text/css" href="styles.css">
   <link rel="stylesheet" href="sv-modal.css?dev">
+
+  <meta http-equiv="Content-Security-Policy"
+  content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
+           img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
 </head>
 <body>
   <header>
@@ -20,13 +24,15 @@
     <p style="margin-top:0px;"><a href="instructions.html" target="_blank" rel="noopener">[instructions]</a></p>
 
     <!-- Select spreadsheet and year -->
+             <!-- removed from drop-zone in favour of Content Security Policy
+             ondrop="dropHandler(event);"
+             ondragover="dragOverHandler(event);">
+             -->
     <div class="sheet-chooser-group">
       <div class="landing-site">
         <div id="drop-zone" 
              title="Drag and drop your events spreadsheet 
-               or click the 'Choose File' button"
-             ondrop="dropHandler(event);"
-             ondragover="dragOverHandler(event);">
+               or click the 'Choose File' button">
           <p>Drag and drop a spreadsheet file here.</p>
         </div>
         <input type="file" accept=".xlsx" id="file-chooser"
