@@ -36,15 +36,18 @@
   but <em>xl2cal</em> expects to find (e.g.&nbsp;Fig.&nbsp;1):
   <ul>
     <li>one event per row, and</li>
-  <li> columns specifying the <em>date</em> of the event 
-    (events spanning days must be added as separate events),
-    the <em>start time</em> of the event,
-    and a <em>description</em> of the event.
+  <li> columns specifying:
+    <ol>
+      <li>the <em>date</em> of the event 
+          (events spanning days must be added as separate events),</li>
+      <li>the <em>start time</em> of the event, and</li>
+      <li>a <em>description</em> of the event.
+    </ol>
     See section <a href="#columns">Selecting columns for export</a>
     for more detail.</li>
   </ul>
-  All event rows must provide this information.
-  <em>Any row that does not look like an event is ignored.</em> 
+  All event rows <em>must</em> provide this information.
+  <strong>Any row that does not look like an event is ignored.</strong> 
   Examples of ones that will be ignored include heading rows, blank rows, 
   any rows without at least a date, start time and event name,
   etc. 
