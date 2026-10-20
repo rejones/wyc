@@ -913,6 +913,7 @@ function generateICal(data, calendarsToExport) {
     if (!line || !line.length) {
       continue;
     }
+    let xlLine = parseInt(lineNum) + 1;
   
     // Defend against regex DOS attacks, otherwise trailing spaces is polynomial
     line = line.map(it => it.trim()); 
@@ -920,7 +921,7 @@ function generateICal(data, calendarsToExport) {
     // Discard header and any other unlikely lines
     const start = line[startCol];
     if ( !start || !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) {
-      console.warn(`Ignoring line ${lineNum} ${line}: no start time specified`);
+      console.warn(`Ignoring line ${xlLine} ${line}: no start time specified`);
       continue;
     }
 
@@ -946,12 +947,12 @@ function generateICal(data, calendarsToExport) {
       else {
         const mth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
         if (!mth) {
-          bad(`Cannot understand month \"${lineMonth}\"`, lineNum, line[eventCol]);
+          bad(`Cannot understand month \"${lineMonth}\"`, xlLine, line[eventCol]);
           continue;
         }
         theMonth = 0 + mth;
         if (theMonth < 1 || theMonth > 12) {
-          bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, lineNum, line[eventCol]);
+          bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, xlLine, line[eventCol]);
           continue;
         }
       }
@@ -963,7 +964,7 @@ function generateICal(data, calendarsToExport) {
         theDay = matchDay[1];
       } else {
         //if (!(/^\d\d?$/.test(theDay))) {
-        bad(`Cannot understand day number \"${theDay}\"`, lineNum, line[eventCol]); 
+        bad(`Cannot understand day number \"${theDay}\"`, xlLine, line[eventCol]); 
         continue; 
       }
 
@@ -971,12 +972,12 @@ function generateICal(data, calendarsToExport) {
       // parse a date
       const dateCol = columns.get(CDATE);
       if (!line[dateCol]) {
-        bad(`Empty date ${line[dateCol]}`, lineNum, line[eventCol]);
+        bad(`Empty date ${line[dateCol]}`, xlLine, line[eventCol]);
         continue;
       }
       const dayMonthYear = parseDate(line[dateCol]);
       if (!dayMonthYear) {
-        bad(`Bad date ${line[dateCol]}`, lineNum, line[eventCol]);
+        bad(`Bad date ${line[dateCol]}`, xlLine, line[eventCol]);
         continue;
       }
       //console.log(dayMonthYear);
@@ -984,7 +985,7 @@ function generateICal(data, calendarsToExport) {
       // check that any year value matches the year chosen 
       if ((dayMonthYear.length === 3) &&
           (dayMonthYear[2] != theDefaultYear)) {
-        if (!warnUserOrCancel(`Year (${dayMonthYear[2]}) on line ${lineNum} differs from ${theDefaultYear}\nIs this what you meant?`)) {
+        if (!warnUserOrCancel(`Year (${dayMonthYear[2]}) on line ${xlLine} differs from ${theDefaultYear}\nIs this what you meant?`)) {
             //text = null;
             return null;
         }
@@ -1003,7 +1004,7 @@ function generateICal(data, calendarsToExport) {
 
     // Check that the date is valid
     if (new Date(theYear, theMonth-1, theDay).getMonth() != theMonth-1) {
-      bad(`${theDay}/${theMonth}/${theYear} is not a valid date`, lineNum, line[eventCol]);
+      bad(`${theDay}/${theMonth}/${theYear} is not a valid date`, xlLine, line[eventCol]);
       continue;
     }
 
@@ -1011,8 +1012,8 @@ function generateICal(data, calendarsToExport) {
     // Discard any lines with no event.
     let theEvent = line[columns.get(CEVENT)];
     if ( !theEvent ) {
-      console.warn(`Ignoring line ${lineNum} ${line}: no event specified`);
-      if(!warnUserOrCancel(`Ignoring line ${lineNum} ${line}: no event specified`)) {
+      console.warn(`Ignoring line ${xlLine} ${line}: no event specified`);
+      if(!warnUserOrCancel(`Ignoring line ${xlLine} ${line}: no event specified`)) {
         return null;
       }
       continue;
@@ -1046,7 +1047,7 @@ function generateICal(data, calendarsToExport) {
       theEndMin = '00';
     }   
     else {
-      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, lineNum, line[eventCol]); 
+      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, xlLine, line[eventCol]); 
       continue; 
     }
 
@@ -1056,7 +1057,7 @@ function generateICal(data, calendarsToExport) {
       if (matchTime = line[endCol].match(/^(\d\d?)[:\.]?(\d\d)/)) {
         if ((+theHour > + matchTime[1]) ||
             ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
-          if (!warnUserOrCancel(`Event on line ${lineNum} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
+          if (!warnUserOrCancel(`Event on line ${xlLine} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
                 `${line[startCol]} and ${line[endCol]}`)) {
             text = null;
             return null;
@@ -1066,7 +1067,7 @@ function generateICal(data, calendarsToExport) {
         theEndMin = matchTime[2];
       }
       else {
-        bad(`Cannot understand End time ${line[endCol]}`, lineNum, line[eventCol]); 
+        bad(`Cannot understand End time ${line[endCol]}`, xlLine, line[eventCol]); 
         continue; 
       }
     }
@@ -1082,7 +1083,7 @@ function generateICal(data, calendarsToExport) {
         theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
       }
       else {
-        bad(`Cannot understand the Duration ${line[columns.get(CDURATION)]}`, lineNum, line[columns.get(CEVENT)]); 
+        bad(`Cannot understand the Duration ${line[columns.get(CDURATION)]}`, xlLine, line[columns.get(CEVENT)]); 
         continue; 
       }
     }
@@ -1100,7 +1101,7 @@ function generateICal(data, calendarsToExport) {
       theEndMin -= 60;
     }
     if (theEndHour >= 24) {
-      if (!warnUserOrCancel(`Event on line ${lineNum} cannot span midnight! ${theEvent}, ${theHour}`)) {
+      if (!warnUserOrCancel(`Event on line ${xlLine} cannot span midnight! ${theEvent}, ${theHour}`)) {
         text = null;
         return null;
       }
