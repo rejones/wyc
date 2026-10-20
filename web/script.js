@@ -115,8 +115,10 @@ const Z = 'Z';      // 'Z' means UTC rather than local time
 // Default durations
 const DEFAULT_DURATION = '2:00';    // hours for a single race 
 const DEFAULT_DEFAULT_DURATION_HOUR = 2;
+const DEFAULT_DEFAULT_EXTENSION_HOUR = 1;
 const DEFAULT_DEFAULT_DURATION_MIN = 0;
 let DEFAULT_DURATION_HOUR = DEFAULT_DEFAULT_DURATION_HOUR;
+let DEFAULT_EXTENSION_HOUR = DEFAULT_DEFAULT_EXTENSION_HOUR;
 let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 
 // Spreadsheet data
@@ -149,8 +151,8 @@ window.onerror = function (evt, source, lineno, colno, error) {
             "You must use https:");
   } 
   else if (!(error instanceof AbortError)) {
-    console.warn(`Unexpected error at line ${lineno}!\n`, evt, error);
-    alert(`Unexpected error at line ${lineno}!\n` +
+    console.warn(`Unexpected error at line ${1+lineno}!\n`, evt, error);
+    alert(`Unexpected error at line ${1+lineno}!\n` +
            error +
            "\nPlease report");
   }
@@ -454,7 +456,7 @@ function renderTable(data) {
     td.appendChild(sel);
     headRow.appendChild(td);
   }
-  tbl.appendChild(headRow); // Hmm - hasn't generated options in the header row
+  tbl.appendChild(headRow); 
   
   // Process the data, also saving it as strings
   theData.length = 0; // clear in case user has added the spreadsheet more than once
@@ -770,8 +772,6 @@ function selectCalendars(calendarsFound) {
       <button id="cancel-calendar-choice-button">Cancel</button>
       <button id="export-calendar-choice-button">Export</button>
   `;
-      //<button id="cancel-calendar-choice-button" onclick="cancelSelect()">Cancel</button>
-      //<button id="export-calendar-choice-button" onclick="exportSelect()">Export</button>
 
   modal.inject(html, 'Select calendars to export');
   modal.getContentElement().querySelector('#cancel-calendar-choice-button')
@@ -883,6 +883,99 @@ function parseDate(rowDate) {
     [days[0], months[0]];
 }
 
+/**
+ * Get the start time
+ * @line The line
+ * @start The start column value
+ * @return Start hour, minute, end hour, minute object or null if not a valid start time
+ */
+function getTimes(line, start) {
+  let matchTime;
+  if (matchTime = start.match(/^(\d\d?)[:\.]?(\d\d)/)) {
+    const theHour = matchTime[1].padStart(2, '0');
+    const theMin = matchTime[2];
+    return {H: theHour, M: theMin, EH: null, EM: null};
+  }
+  else if (start.match(/TBA|TBC|-/i) || 
+            start === '') {
+    return {H: TBAhour, M: '00', EH: TBAend_hour, EM: '00'};
+  }
+  else if (start.match(/N\/?A/i)) {
+    return {H: NAhour, M: '00', EH: NAend_hour, EM: '00'};
+  }   
+  else return null;
+}
+
+
+/**
+ * Get the date without warnings
+ * @line The line
+ * @
+ */
+function hasDate(line) {
+  let theDay, theMonth, theYear;
+
+  if (columns.has(CDAY) && columns.has(CMONTH)) {
+    theYear = theDefaultYear;
+    const monthCol = columns.get(CMONTH); 
+    const lineMonth = line[monthCol];
+    // allow either month number or string
+    if (/^\d\d?$/.test(lineMonth)) {
+      theMonth =  line[monthCol];
+    }
+    else {
+      const mth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
+      if (!mth) {
+        return false;
+      }
+      theMonth = 0 + mth;
+      if (theMonth < 1 || theMonth > 12) {
+        return false;
+      }
+    }
+
+    // get the day number
+    //theDay = line[columns.get(CDAY)];
+    let matchDay;
+    if (matchDay = line[columns.get(CDAY)].match(/^(\d\d?)(st|nd|rd|th)?/i)) {
+      theDay = matchDay[1];
+    } else {
+      //if (!(/^\d\d?$/.test(theDay))) {
+      return false; 
+    }
+
+  } else if (columns.has(CDATE)) {
+    // parse a date
+    const dateCol = columns.get(CDATE);
+    if (!line[dateCol]) {
+      return null;
+    }
+    const dayMonthYear = parseDate(line[dateCol]);
+    if (!dayMonthYear) {
+      return false;
+    }
+    //console.log(dayMonthYear);
+
+    if (dayMonthYear.length === 2) {
+      dayMonthYear.push(theDefaultYear);
+    }
+
+    theDay = dayMonthYear[0];
+    theMonth = dayMonthYear[1].match(/^\d+$/) ?
+      dayMonthYear[1] :
+      months.get(dayMonthYear[1].substr(0, 3));
+    //console.log('theDay - theMonth', theDay, theMonth);
+    theYear = dayMonthYear[2];
+  }
+
+  // Check that the date is valid
+  if (new Date(theYear, theMonth-1, theDay).getMonth() != theMonth-1) {
+    return false;
+  }
+
+  return true;
+}
+
 
 /**
  * Generate the iCalendar data
@@ -913,16 +1006,26 @@ function generateICal(data, calendarsToExport) {
     if (!line || !line.length) {
       continue;
     }
-    let xlLine = parseInt(lineNum) + 1;
+
+    let ll = parseInt(lineNum) + 1; //The Excel line number, for error reporting
   
     // Defend against regex DOS attacks, otherwise trailing spaces is polynomial
     line = line.map(it => it.trim()); 
 
-    // Discard header and any other unlikely lines
+    // Warn use if there's no valid start
     const start = line[startCol];
     if ( !start || !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) {
-      console.warn(`Ignoring line ${xlLine} ${line}: no start time specified`);
-      continue;
+      // Ignore lines like header lines where date and start are both invalid
+      if (!hasDate(line)) {
+        console.warn(`Ignoring line ${ll} ${line}: no valid date and start specified`);
+        continue;
+      }
+      else {
+        if (warnUserOrCancel(`Ignoring line ${ll} ${line}: no start time specified`)) 
+          continue;
+        else
+          return null;
+      }
     }
 
     // Skip rows for unwanted calendars
@@ -947,12 +1050,12 @@ function generateICal(data, calendarsToExport) {
       else {
         const mth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
         if (!mth) {
-          bad(`Cannot understand month \"${lineMonth}\"`, xlLine, line[eventCol]);
+          bad(`Cannot understand month \"${lineMonth}\"`, ll, line[eventCol]);
           continue;
         }
         theMonth = 0 + mth;
         if (theMonth < 1 || theMonth > 12) {
-          bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, xlLine, line[eventCol]);
+          bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, ll, line[eventCol]);
           continue;
         }
       }
@@ -964,7 +1067,7 @@ function generateICal(data, calendarsToExport) {
         theDay = matchDay[1];
       } else {
         //if (!(/^\d\d?$/.test(theDay))) {
-        bad(`Cannot understand day number \"${theDay}\"`, xlLine, line[eventCol]); 
+        bad(`Cannot understand day number \"${theDay}\"`, ll, line[eventCol]); 
         continue; 
       }
 
@@ -972,12 +1075,12 @@ function generateICal(data, calendarsToExport) {
       // parse a date
       const dateCol = columns.get(CDATE);
       if (!line[dateCol]) {
-        bad(`Empty date ${line[dateCol]}`, xlLine, line[eventCol]);
+        bad(`Empty date ${line[dateCol]}`, ll, line[eventCol]);
         continue;
       }
       const dayMonthYear = parseDate(line[dateCol]);
       if (!dayMonthYear) {
-        bad(`Bad date ${line[dateCol]}`, xlLine, line[eventCol]);
+        bad(`Bad date ${line[dateCol]}`, ll, line[eventCol]);
         continue;
       }
       //console.log(dayMonthYear);
@@ -985,7 +1088,7 @@ function generateICal(data, calendarsToExport) {
       // check that any year value matches the year chosen 
       if ((dayMonthYear.length === 3) &&
           (dayMonthYear[2] != theDefaultYear)) {
-        if (!warnUserOrCancel(`Year (${dayMonthYear[2]}) on line ${xlLine} differs from ${theDefaultYear}\nIs this what you meant?`)) {
+        if (!warnUserOrCancel(`Year (${dayMonthYear[2]}) on line ${ll} differs from ${theDefaultYear}\nIs this what you meant?`)) {
             //text = null;
             return null;
         }
@@ -1004,16 +1107,16 @@ function generateICal(data, calendarsToExport) {
 
     // Check that the date is valid
     if (new Date(theYear, theMonth-1, theDay).getMonth() != theMonth-1) {
-      bad(`${theDay}/${theMonth}/${theYear} is not a valid date`, xlLine, line[eventCol]);
+      bad(`${theDay}/${theMonth}/${theYear} is not a valid date`, ll, line[eventCol]);
       continue;
     }
-
+    
     // Get the event. 
     // Discard any lines with no event.
     let theEvent = line[columns.get(CEVENT)];
     if ( !theEvent ) {
-      console.warn(`Ignoring line ${xlLine} ${line}: no event specified`);
-      if(!warnUserOrCancel(`Ignoring line ${xlLine} ${line}: no event specified`)) {
+      console.warn(`Ignoring line ${ll} ${line}: no event specified`);
+      if(!warnUserOrCancel(`Ignoring line ${ll} ${line}: no event specified`)) {
         return null;
       }
       continue;
@@ -1027,29 +1130,17 @@ function generateICal(data, calendarsToExport) {
     let theEndMin;
 
     // Must have a Start time
-    let matchTime;
-    if (matchTime = line[startCol].match(/^(\d\d?)[:\.]?(\d\d)/)) {
-      theHour = matchTime[1].padStart(2, '0');
-      theMin = matchTime[2];
-    }
-    else if (line[startCol].match(/TBA|TBC|-/i) || 
-              line[startCol] === '') {
-      theHour = TBAhour;
-      theMin = '00';
-      theEndHour = TBAend_hour;
-      theEndMin = '00';
-      theEvent = theEvent + TBAstring;
-    }
-    else if (line[startCol].match(/N\/?A/i)) {
-      theHour = NAhour;
-      theMin = '00';
-      theEndHour = NAend_hour;
-      theEndMin = '00';
-    }   
-    else {
-      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, xlLine, line[eventCol]); 
+    const theTimes = getTimes(line, start);
+    if (!theTimes) {
+      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, ll, line[eventCol]); 
       continue; 
     }
+    theHour = theTimes.H;
+    theMin = theTimes.M;
+    theEndHour = theTimes.EH;
+    theEndMin = theTimes.EM;
+    if (theHour === TBAhour) 
+      theEvent = theEvent + TBAstring;
 
     // May have an End time
     if (columns.has(CEND) && line[columns.get(CEND)]) {
@@ -1057,17 +1148,17 @@ function generateICal(data, calendarsToExport) {
       if (matchTime = line[endCol].match(/^(\d\d?)[:\.]?(\d\d)/)) {
         if ((+theHour > + matchTime[1]) ||
             ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
-          if (!warnUserOrCancel(`Event on line ${xlLine} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
+          if (!warnUserOrCancel(`Event on line ${ll} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
                 `${line[startCol]} and ${line[endCol]}`)) {
             text = null;
             return null;
           }
         }
-        theEndHour = matchTime[1];
+        theEndHour = matchTime[1].padStart(2, '0');
         theEndMin = matchTime[2];
       }
       else {
-        bad(`Cannot understand End time ${line[endCol]}`, xlLine, line[eventCol]); 
+        bad(`Cannot understand End time ${line[endCol]}`, ll, line[eventCol]); 
         continue; 
       }
     }
@@ -1083,7 +1174,7 @@ function generateICal(data, calendarsToExport) {
         theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
       }
       else {
-        bad(`Cannot understand the Duration ${line[columns.get(CDURATION)]}`, xlLine, line[columns.get(CEVENT)]); 
+        bad(`Cannot understand the Duration ${line[columns.get(CDURATION)]}`, ll, line[columns.get(CEVENT)]); 
         continue; 
       }
     }
@@ -1091,7 +1182,7 @@ function generateICal(data, calendarsToExport) {
     else {
       // assume more than one race if event string includes 
       // more than one separate number, and allow an extra hour 
-      theEndHour = +theHour + (/\d\D+\d/.test(theEvent) ? DEFAULT_DURATION_HOUR + 1 : DEFAULT_DURATION_HOUR);
+      theEndHour = +theHour + (/\d\D+\d/.test(theEvent) ? DEFAULT_DURATION_HOUR + DEFAULT_EXTENSION_HOUR : DEFAULT_DURATION_HOUR);
       theEndMin = +theMin + DEFAULT_DURATION_MIN;
     }
 
@@ -1101,7 +1192,7 @@ function generateICal(data, calendarsToExport) {
       theEndMin -= 60;
     }
     if (theEndHour >= 24) {
-      if (!warnUserOrCancel(`Event on line ${xlLine} cannot span midnight! ${theEvent}, ${theHour}`)) {
+      if (!warnUserOrCancel(`Event on line ${ll} cannot span midnight! ${theEvent}, ${theHour}`)) {
         text = null;
         return null;
       }
