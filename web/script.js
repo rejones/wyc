@@ -56,6 +56,42 @@ const months = new Map([
   ['NOV', '11'],
   ['DEC', '12']
 ]);
+/** 
+ * Month prefixes to numbers
+ * Month numbers are strings to help with padding
+ */
+const months = new Map([
+  ['JAN', '1'],
+  ['FEB', '2'],
+  ['MAR', '3'],
+  ['APR', '4'],
+  ['MAY', '5'],
+  ['JUN', '6'],
+  ['JUL', '7'],
+  ['AUG', '8'],
+  ['SEP', '9'],
+  ['OCT', '10'],
+  ['NOV', '11'],
+  ['DEC', '12']
+]);
+/** 
+ * Month prefixes to full names
+ */
+const fullMonths = new Map([
+  ['JAN', 'JANUARY'],
+  ['FEB', 'FEBRUARY'],
+  ['MAR', 'MARCH'],
+  ['APR', 'APRIL'],
+  ['MAY', 'MAY'],
+  ['JUN', 'JUNE'],
+  ['JUL', 'JULY'],
+  ['AUG', 'AUGUST'],
+  ['SEP', 'SEPTEMBER'],
+  ['OCT', 'OCTOBER'],
+  ['NOV', 'NOVEMBER'],
+  ['DEC', 'DECEMBER']
+]);
+
 const MONTHS_PREFIX_LEN = 3;
 
 /**
@@ -1001,6 +1037,20 @@ function hasDate(line, theDefaultYear) {
 
 
 /**
+ * Is string a valid month name?
+ * @month The given month
+ * @return true if month is a prefix of a real month name
+ */
+function isValidMonth(month) {
+  const monthUC = month.replace(/[. ]+$/, '').toUpperCase();
+  const realName = fullMonths.get(monthUC.substr(0, MONTHS_PREFIX_LEN));
+  if (!realName) 
+    return false;
+  return (monthUC === realName.substr(0, monthUC.length));
+}
+
+
+/**
  * Generate the iCalendar data
  * @param data The data
  * @param calendarsToExport The calendars selected for export
@@ -1066,12 +1116,20 @@ function generateICal(data, calendarsToExport) {
     if (columns.has(CDAY) && columns.has(CMONTH)) {
       theYear = theDefaultYear;
       const monthCol = columns.get(CMONTH); 
-      const lineMonth = line[monthCol] || '';         // Guard against empty cell
+      const lineMonth = line[monthCol];
+      if (!lineMonth) {         // Guard against empty cell
+        bad(`Empty month`, ll, line[eventCol]);
+        continue;
+      }
       // allow either month number or string
       if (/^\d\d?$/.test(lineMonth)) {
         theMonth =  line[monthCol];
       }
       else {
+        if (!isValidMonth(lineMonth)) {
+          bad(`Bad month name ${lineMonth}`, ll, line[eventCol]);
+          continue;
+        }
         theMonth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
         if (!theMonth) {
           bad(`Cannot understand month \"${lineMonth}\"`, ll, line[eventCol]);
@@ -1162,6 +1220,11 @@ function generateICal(data, calendarsToExport) {
     }
     theHour = theTimes.H;
     theMin = theTimes.M;
+    if (theHour > 23 || theMin >59) {
+      bad(`Start time ${line[columns.get(CSTART)]} is invalid`, ll, line[eventCol]); 
+      continue; 
+    }
+      
     theEndHour = theTimes.EH;
     theEndMin = theTimes.EM;
     if (theHour === TBAhour) 
@@ -1183,6 +1246,10 @@ function generateICal(data, calendarsToExport) {
         }
         theEndHour = matchTime[1].padStart(2, '0');
         theEndMin = matchTime[2];
+        if (theEndHour > 23 || theENDMin >59) {
+          bad(`End time ${line[endCol]} is invalid`, ll, line[eventCol]); 
+          continue; 
+        }
       }
       else {
         bad(`Cannot understand End time ${line[endCol]}`, ll, line[eventCol]); 
