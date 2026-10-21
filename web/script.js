@@ -945,11 +945,10 @@ function hasDate(line, theDefaultYear) {
       theMonth =  line[monthCol];
     }
     else {
-      const mth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
-      if (!mth) {
+      theMonth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
+      if (!theMonth) {
         return false;
       }
-      theMonth = 0 + mth;
       if (theMonth < 1 || theMonth > 12) {
         return false;
       }
@@ -1073,7 +1072,7 @@ function generateICal(data, calendarsToExport) {
       }
       else {
         theMonth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
-        if (!mth) {
+        if (!theMonth) {
           bad(`Cannot understand month \"${lineMonth}\"`, ll, line[eventCol]);
           continue;
         }
