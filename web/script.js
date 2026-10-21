@@ -122,13 +122,14 @@ let DEFAULT_EXTENSION_HOUR = DEFAULT_DEFAULT_EXTENSION_HOUR;
 let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 
 // Regular expressions
-const TBA_PATT = /^(TBA|TBC|-)$/i;                  // TBA or tbc, etc Could strengthen with ^$
-const NA_PATT = /^(N\/?A)|-$/i;                       // N/A or NA Could strengthen with ^$
-const TIME_PATT = /^(\d\d?)[:\.]?(\d\d)/;           // a time such as 9:30, 12.15 or 1100
+const TBA_PATT = /^(TBA|TBC|-)$/i;                   // TBA or tbc, etc Could strengthen with ^$
+const NA_PATT = /^(N\/?A|-$)/i;                      // N/A or NA Could strengthen with ^$
+const TIME_PATT = /^(\d\d?)[:\.]?(\d\d)$/;           // a time such as 9:30, 12.15 or 1100
+const DURATION_PATT = /^(\d\d?)[:\.]?(\d\d)?$/;      // a duration as 1, 2:30, 3.15 or 1100
 const ANY_TIME_PATT = /^(\d\d?[:\.]?\d\d|TB[AC]|N\/?A|-)$/i; // a time or TBA or N/A etc 
-const DATE_PATT = /^(\d\d?)\/(\d\d?)\/(\d{2,4})$/;  // a date such as 17/10/2026 or 1/6/26 
-const ORDINAL_DAY_PATT = /^(\d\d?)(st|nd|rd|th)?/i; // Ordinal day eg 12th
-const INTEGER_PATT = /^\d+$/;                       // an integer
+const DATE_PATT = /^(\d\d?)\/(\d\d?)\/(\d{2,4})$/;   // a date such as 17/10/2026 or 1/6/26 
+const ORDINAL_DAY_PATT = /^(\d\d?)(st|nd|rd|th)?$/i; // Ordinal day eg 12th
+const INTEGER_PATT = /^\d+$/;                        // an integer
 
 
 // Spreadsheet data
@@ -224,14 +225,14 @@ window.addEventListener('DOMContentLoaded', () => {
     let matchTime;
     if (duration) {
       //matchTime = duration.match(/^(\d\d?)([:\.]\d\d)?/); // 
-      matchTime = duration.match(TIME_PATT); 
+      matchTime = duration.match(DURATION_PATT); 
     }
     if (matchTime) {
       DEFAULT_DURATION_HOUR = +matchTime[1];
-      if (matchTime[2]) {
-        //matchTime[2] = matchTime[2].match(/\d\d/); // 
-        matchTime[2] = matchTime[2]; 
-      }
+      //if (matchTime[2]) {
+      //  //matchTime[2] = matchTime[2].match(/\d\d/); // 
+      //  matchTime[2] = matchTime[2]; 
+      //}
       DEFAULT_DURATION_MIN =  matchTime[2] ? +matchTime[2] : 0;
     } 
     else {
@@ -1193,12 +1194,12 @@ function generateICal(data, calendarsToExport) {
     else if (columns.has(CDURATION) && line[columns.get(CDURATION)]) {
       //console.log(line[columns.get(CEVENT)], line[columns.get(CSTART)], line[columns.get(CDURATION)]);
       //if (matchTime = line[columns.get(CDURATION)].match(/^(\d\d?)([:\.]\d\d)?/)) { 
-      if (matchTime = line[columns.get(CDURATION)].match(TIME_PATT)) {
+      if (matchTime = line[columns.get(CDURATION)].match(DURATION_PATT)) {
         theEndHour = +theHour + +matchTime[1];
-        if (matchTime[2]) {
-          //matchTime[2] = matchTime[2].match(/\d\d/);
-          matchTime[2] = matchTime[2];
-        }
+        //if (matchTime[2]) {
+        //  //matchTime[2] = matchTime[2].match(/\d\d/);
+        //  matchTime[2] = matchTime[2];
+        //}
         theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
       }
       else {
