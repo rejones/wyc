@@ -121,6 +121,16 @@ let DEFAULT_DURATION_HOUR = DEFAULT_DEFAULT_DURATION_HOUR;
 let DEFAULT_EXTENSION_HOUR = DEFAULT_DEFAULT_EXTENSION_HOUR;
 let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 
+// Regular expressions
+const TBA_PATT = /^(TBA|TBC|-)$/i;                  // TBA or tbc, etc Could strengthen with ^$
+const NA_PATT = /^(N\/?A)|-$/i;                       // N/A or NA Could strengthen with ^$
+const TIME_PATT = /^(\d\d?)[:\.]?(\d\d)/;           // a time such as 9:30, 12.15 or 1100
+const ANY_TIME_PATT = /^(\d\d?[:\.]?\d\d|TB[AC]|N\/?A|-)$/i; // a time or TBA or N/A etc 
+const DATE_PATT = /^(\d\d?)\/(\d\d?)\/(\d{2,4})$/;  // a date such as 17/10/2026 or 1/6/26 
+const ORDINAL_DAY_PATT = /^(\d\d?)(st|nd|rd|th)?/i; // Ordinal day eg 12th
+const INTEGER_PATT = /^\d+$/;                       // an integer
+
+
 // Spreadsheet data
 const MAX_SPREADSHEET_SIZE = 1024 * 1024;// Maximum spreadsheet size
 const MAX_COLUMNS = 60;                  // Maximum number of columns for decent performance
@@ -213,12 +223,14 @@ window.addEventListener('DOMContentLoaded', () => {
     const duration = durationBox.value;
     let matchTime;
     if (duration) {
-      matchTime = duration.match(/^(\d\d?)([:\.]\d\d)?/);
+      //matchTime = duration.match(/^(\d\d?)([:\.]\d\d)?/); // 
+      matchTime = duration.match(TIME_PATT); 
     }
     if (matchTime) {
       DEFAULT_DURATION_HOUR = +matchTime[1];
       if (matchTime[2]) {
-        matchTime[2] = matchTime[2].match(/\d\d/);
+        //matchTime[2] = matchTime[2].match(/\d\d/); // 
+        matchTime[2] = matchTime[2]; 
       }
       DEFAULT_DURATION_MIN =  matchTime[2] ? +matchTime[2] : 0;
     } 
@@ -526,7 +538,8 @@ function renderTable(data) {
       else {
         let matchDate;
         // Defend against regex DOS attacks, otherwise trailing spaces is polynomial
-        if (cell && (matchDate = cell.trim().match(/^(\d\d?)\/(\d\d?)\/(\d{2,4})$/))) {
+        //if (cell && (matchDate = cell.trim().match(/^(\d\d?)\/(\d\d?)\/(\d{2,4})$/))) {
+        if (cell && (matchDate = cell.trim().match(DATE_PATT))) { 
           // Looks like a date.
           // Excel default format seems to be m/d/yy but we want to display and use d/m/yy
           cellValue = `${matchDate[2]}/${matchDate[1]}/${matchDate[3]}`;
@@ -656,9 +669,12 @@ function findCalendars() {
       if (!start)
         continue;
       // Replicate patterns for Start time in generateICal
-      if ( start.match(/^(\d\d?)[:\.]?(\d\d)/) ||
-           start.match(/TBA|TBC|-/i) ||
-           start.match(/N\/?A/i) ) {
+      //if ( start.match(/^(\d\d?)[:\.]?(\d\d)/) || 
+      //     start.match(/TBA|TBC|-/i) ||  
+      //     start.match(/N\/?A/i) ) {  
+      if ( start.match(TIME_PATT) ||  
+           start.match(TBA_PATT) ||  
+           start.match(NA_PATT) ) {  
         //console.log(row[columns.get(CEVENT)], row[calCol]);
         if (row[calCol]) {
           calendarsFound.add(row[calCol]);
@@ -837,7 +853,8 @@ function parseDate(rowDate) {
   
   // Next, try dd/mm/yy
   let matchDate;
-  if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)\/(\d{2,4})$/)) {
+  //if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)\/(\d{2,4})$/)) {
+  if (matchDate = rowDate.match(DATE_PATT)) {
     const day = matchDate[1];
     const month = matchDate[2];
     let year = +matchDate[3];
@@ -891,16 +908,19 @@ function parseDate(rowDate) {
  */
 function getTimes(line, start) {
   let matchTime;
-  if (matchTime = start.match(/^(\d\d?)[:\.]?(\d\d)/)) {
+  //if (matchTime = start.match(/^(\d\d?)[:\.]?(\d\d)/)) { 
+  if (matchTime = start.match(TIME_PATT)) {
     const theHour = matchTime[1].padStart(2, '0');
     const theMin = matchTime[2];
     return {H: theHour, M: theMin, EH: null, EM: null};
   }
-  else if (start.match(/TBA|TBC|-/i) || 
+  //else if (start.match(/TBA|TBC|-/i) || 
+  else if (start.match(TBA_PATT) ||
             start === '') {
     return {H: TBAhour, M: '00', EH: TBAend_hour, EM: '00'};
   }
-  else if (start.match(/N\/?A/i)) {
+  //else if (start.match(/N\/?A/i)) { 
+  else if (start.match(NA_PATT)) { 
     return {H: NAhour, M: '00', EH: NAend_hour, EM: '00'};
   }   
   else return null;
@@ -910,15 +930,16 @@ function getTimes(line, start) {
 /**
  * Get the date without warnings
  * @line The line
- * @
+ * @theDefaultYear The default year chosen by the user
+ * @return true if the line includes a date
  */
-function hasDate(line) {
+function hasDate(line, theDefaultYear) {
   let theDay, theMonth, theYear;
 
   if (columns.has(CDAY) && columns.has(CMONTH)) {
     theYear = theDefaultYear;
     const monthCol = columns.get(CMONTH); 
-    const lineMonth = line[monthCol];
+    const lineMonth = line[monthCol] || '';         // Guard against empty cell
     // allow either month number or string
     if (/^\d\d?$/.test(lineMonth)) {
       theMonth =  line[monthCol];
@@ -937,7 +958,8 @@ function hasDate(line) {
     // get the day number
     //theDay = line[columns.get(CDAY)];
     let matchDay;
-    if (matchDay = line[columns.get(CDAY)].match(/^(\d\d?)(st|nd|rd|th)?/i)) {
+    //if (matchDay = line[columns.get(CDAY)].match(/^(\d\d?)(st|nd|rd|th)?/i)) { 
+    if (matchDay = (line[columns.get(CDAY) || '')].match(ORDINAL_DAY_PATT)) {  // Guard against empty cell
       theDay = matchDay[1];
     } else {
       //if (!(/^\d\d?$/.test(theDay))) {
@@ -961,7 +983,8 @@ function hasDate(line) {
     }
 
     theDay = dayMonthYear[0];
-    theMonth = dayMonthYear[1].match(/^\d+$/) ?
+    //theMonth = dayMonthYear[1].match(/^\d+$/) ? 
+    theMonth = dayMonthYear[1].match(INTEGER_PATT) ?
       dayMonthYear[1] :
       months.get(dayMonthYear[1].substr(0, 3));
     //console.log('theDay - theMonth', theDay, theMonth);
@@ -1014,9 +1037,10 @@ function generateICal(data, calendarsToExport) {
 
     // Warn use if there's no valid start
     const start = line[startCol];
-    if ( !start || !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) {
+    //if ( !start || !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) { 
+    if ( !start || !start.match(ANY_TIME_PATT) ) {
       // Ignore lines like header lines where date and start are both invalid
-      if (!hasDate(line)) {
+      if (!hasDate(line, theDefaultYear)) {
         console.warn(`Ignoring line ${ll} ${line}: no valid date and start specified`);
         continue;
       }
@@ -1042,18 +1066,17 @@ function generateICal(data, calendarsToExport) {
     if (columns.has(CDAY) && columns.has(CMONTH)) {
       theYear = theDefaultYear;
       const monthCol = columns.get(CMONTH); 
-      const lineMonth = line[monthCol];
+      const lineMonth = line[monthCol] || '';         // Guard against empty cell
       // allow either month number or string
       if (/^\d\d?$/.test(lineMonth)) {
         theMonth =  line[monthCol];
       }
       else {
-        const mth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
+        theMonth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
         if (!mth) {
           bad(`Cannot understand month \"${lineMonth}\"`, ll, line[eventCol]);
           continue;
         }
-        theMonth = 0 + mth;
         if (theMonth < 1 || theMonth > 12) {
           bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, ll, line[eventCol]);
           continue;
@@ -1063,7 +1086,8 @@ function generateICal(data, calendarsToExport) {
       // get the day number
       //theDay = line[columns.get(CDAY)];
       let matchDay;
-      if (matchDay = line[columns.get(CDAY)].match(/^(\d\d?)(st|nd|rd|th)?/i)) {
+      //if (matchDay = line[columns.get(CDAY)].match(/^(\d\d?)(st|nd|rd|th)?/i)) {
+      if (matchDay = (line[columns.get(CDAY)] || '').match(ORDINAL_DAY_PATT)) {  // Guard against empty cell
         theDay = matchDay[1];
       } else {
         //if (!(/^\d\d?$/.test(theDay))) {
@@ -1098,7 +1122,8 @@ function generateICal(data, calendarsToExport) {
       }
   
       theDay = dayMonthYear[0];
-      theMonth = dayMonthYear[1].match(/^\d+$/) ?
+      //theMonth = dayMonthYear[1].match(/^\d+$/) ?
+      theMonth = dayMonthYear[1].match(INTEGER_PATT) ? 
         dayMonthYear[1] :
         months.get(dayMonthYear[1].substr(0, 3));
       //console.log('theDay - theMonth', theDay, theMonth);
@@ -1143,9 +1168,11 @@ function generateICal(data, calendarsToExport) {
       theEvent = theEvent + TBAstring;
 
     // May have an End time
+    let matchTime;
     if (columns.has(CEND) && line[columns.get(CEND)]) {
       const endCol = columns.get(CEND);
-      if (matchTime = line[endCol].match(/^(\d\d?)[:\.]?(\d\d)/)) {
+      //if (matchTime = line[endCol].match(/^(\d\d?)[:\.]?(\d\d)/)) {
+      if (matchTime = line[endCol].match(TIME_PATT)) {
         if ((+theHour > + matchTime[1]) ||
             ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
           if (!warnUserOrCancel(`Event on line ${ll} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
@@ -1166,10 +1193,12 @@ function generateICal(data, calendarsToExport) {
     // Or may have a Duration
     else if (columns.has(CDURATION) && line[columns.get(CDURATION)]) {
       //console.log(line[columns.get(CEVENT)], line[columns.get(CSTART)], line[columns.get(CDURATION)]);
-      if (matchTime = line[columns.get(CDURATION)].match(/^(\d\d?)([:\.]\d\d)?/)) {
+      //if (matchTime = line[columns.get(CDURATION)].match(/^(\d\d?)([:\.]\d\d)?/)) { 
+      if (matchTime = line[columns.get(CDURATION)].match(TIME_PATT)) {
         theEndHour = +theHour + +matchTime[1];
         if (matchTime[2]) {
-          matchTime[2] = matchTime[2].match(/\d\d/);
+          //matchTime[2] = matchTime[2].match(/\d\d/);
+          matchTime[2] = matchTime[2];
         }
         theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
       }
@@ -1204,7 +1233,7 @@ function generateICal(data, calendarsToExport) {
 
 
     // Get highwater time
-    const highwater = columns.has(CHW) ? line[columns.get(CHW)] : '';
+    const highwater = columns.has(CHW) ? line[columns.get(CHW)] || '' : ''; // Guard against empty cell
    
     // Print the record
     text += printICAL(DTSTAMP, theDay, theMonth, theYear, theHour, theMin, theEndHour, theEndMin, thePrefix, theEvent, highwater);
