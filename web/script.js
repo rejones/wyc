@@ -56,24 +56,7 @@ const months = new Map([
   ['NOV', '11'],
   ['DEC', '12']
 ]);
-/** 
- * Month prefixes to numbers
- * Month numbers are strings to help with padding
- */
-const months = new Map([
-  ['JAN', '1'],
-  ['FEB', '2'],
-  ['MAR', '3'],
-  ['APR', '4'],
-  ['MAY', '5'],
-  ['JUN', '6'],
-  ['JUL', '7'],
-  ['AUG', '8'],
-  ['SEP', '9'],
-  ['OCT', '10'],
-  ['NOV', '11'],
-  ['DEC', '12']
-]);
+
 /** 
  * Month prefixes to full names
  */
@@ -160,21 +143,23 @@ let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 // Regular expressions
 const TBA_PATT = /^(TBA|TBC|-)$/i;                   // TBA or tbc, etc Could strengthen with ^$
 const NA_PATT = /^(N\/?A|-$)/i;                      // N/A or NA Could strengthen with ^$
-const TIME_PATT = /^(\d\d?)[:\.]?(\d\d)$/;           // a time such as 9:30, 12.15 or 1100
-const DURATION_PATT = /^(\d\d?)[:\.]?(\d\d)?$/;      // a duration as 1, 2:30, 3.15 or 1100
-const ANY_TIME_PATT = /^(\d\d?[:\.]?\d\d|TB[AC]|N\/?A|-)$/i; // a time or TBA or N/A etc 
-const DATE_PATT = /^(\d\d?)\/(\d\d?)\/(\d{2,4})$/;   // a date such as 17/10/2026 or 1/6/26 
+const TIME_PATT = /^(\d\d?)[:\.]?(\d\d)$/;           // A time such as 9:30, 12.15 or 1100
+const DURATION_PATT = /^(\d\d?)[:\.]?(\d\d)?$/;      // A duration as 1, 2:30, 3.15 or 1100
+const ANY_TIME_PATT = /^(\d\d?[:\.]?\d\d|TB[AC]|N\/?A|-)$/i;     // A time or TBA or N/A etc 
+const DATE_PATT = /^(\d\d?)[-\/\. ](\d\d?)[-\/\. ](\d{2,4})$/;   // A date such as 17/10/2026 or 1.6.26 
 const ORDINAL_DAY_PATT = /^(\d\d?)(st|nd|rd|th)?$/i; // Ordinal day eg 12th
-const INTEGER_PATT = /^\d+$/;                        // an integer
+const INTEGER_PATT = /^\d+$/;                        // An integer
 
 
 // Spreadsheet data
 const MAX_SPREADSHEET_SIZE = 1024 * 1024;// Maximum spreadsheet size
 const MAX_COLUMNS = 60;                  // Maximum number of columns for decent performance
 const MAX_ROWS = 1000;                   // Maximum number of rows for decent performance
+const JANUARY_1_2020 = 43480;            // Excel value for 1/1/2020
 let theSheet = 0;                        // The sheet to read
 const theData = [];                      // The data from the spreadsheet
 let calendarsFound;                      // Calendars found in the spreadsheet
+let theLineNumber;                       // The number of the current line in the spreadsheet.
 
 /** Export button for spreadsheet should only be created once */
 let hasExportBtn = false;
@@ -260,15 +245,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const duration = durationBox.value;
     let matchTime;
     if (duration) {
-      //matchTime = duration.match(/^(\d\d?)([:\.]\d\d)?/); // 
       matchTime = duration.match(DURATION_PATT); 
     }
     if (matchTime) {
       DEFAULT_DURATION_HOUR = +matchTime[1];
-      //if (matchTime[2]) {
-      //  //matchTime[2] = matchTime[2].match(/\d\d/); // 
-      //  matchTime[2] = matchTime[2]; 
-      //}
       DEFAULT_DURATION_MIN =  matchTime[2] ? +matchTime[2] : 0;
     } 
     else {
@@ -368,7 +348,7 @@ function loadFile(file) {
   
       let workbook;
       try {
-        workbook = XLSX.read(data, { cellStyles: true, type: 'array' });
+        workbook = XLSX.read(data, { cellStyles: true, type: 'array', dateNF: 'd mmmm yyyy' });
       }
       catch (e) {
         throw new AbortError(`${file.name} could not be read as an .xlsx spreadsheet.`);
@@ -530,17 +510,18 @@ function renderTable(data) {
 
       // not used anymore
       if (cell instanceof Date) {
+        console.log(`Found an excelDate on row ${row}: ${cell}, ${cell%1}, ${typeof cell}`);
         // Try to tidy incomplete Excel values
         if (cell.getHours()==0 && cell.getMinutes()==0) { // Looks like a date
           cellValue = `${dayNames[cell.getDay()]} ${cell.getDate()} ${monthNames[cell.getMonth()]}`;
-          // TODO Don't really want to put the day into theData
           const year = cell.getFullYear();
           if (year > 1904) { // Otherwise, user probably didn't specify year so likely to be 1899 or 1903
             cellValue = cellValue + ` ${year}`;
           }
         }
         else { // Probably a time
-          cellValue = `${f(cell.getHours())}:${f(cell.getMinutes())}`;
+          //cellValue = `${f(cell.getHours())}:${f(cell.getMinutes())}`;
+          cellValue = `${cell.getHours()}:${cell.getMinutes()}`;
         }
       }
 
@@ -553,7 +534,8 @@ function renderTable(data) {
             const hours = Math.floor(cell);
             const minutes = Math.round((cell - hours) * 100);
             if (minutes < 60) { // looks like a time
-              cellValue = `${hours}.${f(minutes)}`;
+              //cellValue = `${hours}.${f(minutes)}`;
+              cellValue = `${hours}.${minutes}`;
             }
           }
           else {
@@ -564,7 +546,7 @@ function renderTable(data) {
             cellValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
           }
         }
-        else if (cell > 43480) { // Assume it's a date after 1 Jan 2020
+        else if (cell > JANUARY_1_2020) { // Assume it's a date after 1 Jan 2020
           const date = new Date(Date.UTC(0, 0, cell-1));
           if (!isNaN(date.getFullYear())) {
             cellValue = date.toDateString();
@@ -572,6 +554,7 @@ function renderTable(data) {
         }
       }
 
+      /*
       else {
         let matchDate;
         // Defend against regex DOS attacks, otherwise trailing spaces is polynomial
@@ -582,6 +565,7 @@ function renderTable(data) {
           cellValue = `${matchDate[2]}/${matchDate[1]}/${matchDate[3]}`;
         }
       }
+      */
           
       const td = document.createElement('td');
       td.textContent = cellValue;        // never parsed as HTML
@@ -593,9 +577,6 @@ function renderTable(data) {
     theData.push(newRow);
   }
 
-  /*
-  sheetTable.innerHTML = html;
-  */
   sheetTable.replaceChildren(tbl);
 
   // Add horizontal and vertical sliders to the table
@@ -706,9 +687,6 @@ function findCalendars() {
       if (!start)
         continue;
       // Replicate patterns for Start time in generateICal
-      //if ( start.match(/^(\d\d?)[:\.]?(\d\d)/) || 
-      //     start.match(/TBA|TBC|-/i) ||  
-      //     start.match(/N\/?A/i) ) {  
       if ( start.match(TIME_PATT) ||  
            start.match(TBA_PATT) ||  
            start.match(NA_PATT) ) {  
@@ -856,7 +834,7 @@ function createDTSTAMP() {
  * @return True if so
  */
 function isMonth(month) {
-  month = month.toUpperCase();
+  month = month.replace(/[\.,\s]+$/, '').toUpperCase();
   return monthNames.map(m => m.toUpperCase()).find((m) => {
       return m.startsWith(month);
     }) != undefined;
@@ -877,20 +855,24 @@ function parseDate(rowDate) {
   // First, try Excel Date format which is read as a number
   if (!isNaN(rowDate)) {
     // Try converting from Excel date to JS date
-    //console.log(`rowDate (${rowDate}) is a number`);
+    console.log(`rowDate (${rowDate}) is a number (line ${theLineNumber}`);
+    if (rowDate < JANUARY_1_2020) {
+      if (!warnUserOrCancel(`${rowDate} on line ${theLineNumber} does not look like a date.`)) {
+        return null;
+      }
+    }
+      
     const date = new Date(Date.UTC(0, 0, rowDate -1));
-    //console.log(date);
+    console.log(date);
     if (isNaN(date.getFullYear())) {
       //console.warn(`parseDate returns null! for ${rowDate}`);
       return null;
     }
-    //console.log(rowDate, date.getDate(), date.getMonth() + 1, date.getFullYear());
     return [date.getDate().toString(), date.getMonth() + 1, date.getFullYear()].map((e) => {return e.toString()});
   }
   
   // Next, try dd/mm/yy
   let matchDate;
-  //if (matchDate = rowDate.match(/^(\d\d?)\/(\d\d?)\/(\d{2,4})$/)) {
   if (matchDate = rowDate.match(DATE_PATT)) {
     const day = matchDate[1];
     const month = matchDate[2];
@@ -913,7 +895,7 @@ function parseDate(rowDate) {
   let dayMonthYear = rowDate.split(delimiterRE)
                      .filter(it => it !== '')              // remove any empty elements
                      .map(it => it.toUpperCase());         // make all upper case
-                     //.filter(it => !isDay(it));          // remove any day names TODO Needs to accept all forms of days
+                     //.filter(it => !isDay(it));          // remove any day names 
   //console.log('dayMonthYear', dayMonthYear);
   const years = dayMonthYear
                 .filter (it => yearRE.test(it));         // get any year
@@ -922,16 +904,17 @@ function parseDate(rowDate) {
                    .filter(it => !(yearRE.test(it)));   // remove any year
   //console.log('dayMonth', dayMonth);
   const days = dayMonth
-               .filter(it => /^\d+[A-Z]*$/.test(it))    // only day strings 
-               .map(it => it.replace(/[A-Z]*$/,''));    // remove any ordinal characters
+               .filter(it => /^\d+(ST|ND|RD|TH)?$/.test(it))    // only day strings 
+               .map(it => it.replace(/(ST|ND|RD|TH)$/,''));    // remove any ordinal characters
   //console.log('days', days);
-  //const months = dayMonth
-  //               .filter(it => /^[A-Z]+$/.test(it)); 
   const months = dayMonth.filter(isMonth);              // get any month(s)
   //console.log('months',months);
   //console.log(days[0], months[0], years[0]);
-  if (!days.length || !months.length)                   // must have day and month numbers
+  if (days.length != 1 || months.length != 1) {                  // must have day and month numbers
     return null;  
+  }
+  // TODO Could check that any weekday given is correct.
+  //console.log(years.length);
   return years.length ? 
     [days[0], months[0], years[0]] :
     [days[0], months[0]];
@@ -945,18 +928,15 @@ function parseDate(rowDate) {
  */
 function getTimes(line, start) {
   let matchTime;
-  //if (matchTime = start.match(/^(\d\d?)[:\.]?(\d\d)/)) { 
   if (matchTime = start.match(TIME_PATT)) {
     const theHour = matchTime[1].padStart(2, '0');
     const theMin = matchTime[2];
     return {H: theHour, M: theMin, EH: null, EM: null};
   }
-  //else if (start.match(/TBA|TBC|-/i) || 
   else if (start.match(TBA_PATT) ||
             start === '') {
     return {H: TBAhour, M: '00', EH: TBAend_hour, EM: '00'};
   }
-  //else if (start.match(/N\/?A/i)) { 
   else if (start.match(NA_PATT)) { 
     return {H: NAhour, M: '00', EH: NAend_hour, EM: '00'};
   }   
@@ -992,13 +972,10 @@ function hasDate(line, theDefaultYear) {
     }
 
     // get the day number
-    //theDay = line[columns.get(CDAY)];
     let matchDay;
-    //if (matchDay = line[columns.get(CDAY)].match(/^(\d\d?)(st|nd|rd|th)?/i)) { 
-    if (matchDay = (line[columns.get(CDAY) || '')].match(ORDINAL_DAY_PATT)) {  // Guard against empty cell
+    if (matchDay = (line[columns.get(CDAY)] || '').match(ORDINAL_DAY_PATT)) {  // Guard against empty cell
       theDay = matchDay[1];
     } else {
-      //if (!(/^\d\d?$/.test(theDay))) {
       return false; 
     }
 
@@ -1009,10 +986,10 @@ function hasDate(line, theDefaultYear) {
       return null;
     }
     const dayMonthYear = parseDate(line[dateCol]);
+    //console.log(dayMonthYear);
     if (!dayMonthYear) {
       return false;
     }
-    //console.log(dayMonthYear);
 
     if (dayMonthYear.length === 2) {
       dayMonthYear.push(theDefaultYear);
@@ -1033,20 +1010,6 @@ function hasDate(line, theDefaultYear) {
   }
 
   return true;
-}
-
-
-/**
- * Is string a valid month name?
- * @month The given month
- * @return true if month is a prefix of a real month name
- */
-function isValidMonth(month) {
-  const monthUC = month.replace(/[. ]+$/, '').toUpperCase();
-  const realName = fullMonths.get(monthUC.substr(0, MONTHS_PREFIX_LEN));
-  if (!realName) 
-    return false;
-  return (monthUC === realName.substr(0, monthUC.length));
 }
 
 
@@ -1080,22 +1043,21 @@ function generateICal(data, calendarsToExport) {
       continue;
     }
 
-    let ll = parseInt(lineNum) + 1; //The Excel line number, for error reporting
+    theLineNumber = parseInt(lineNum) + 1; //The Excel line number, for error reporting
   
     // Defend against regex DOS attacks, otherwise trailing spaces is polynomial
     line = line.map(it => it.trim()); 
 
     // Warn use if there's no valid start
     const start = line[startCol];
-    //if ( !start || !start.match(/\d+[:\.]?\d+|TB[AC]|N\/?A/i) ) { 
     if ( !start || !start.match(ANY_TIME_PATT) ) {
       // Ignore lines like header lines where date and start are both invalid
       if (!hasDate(line, theDefaultYear)) {
-        console.warn(`Ignoring line ${ll} ${line}: no valid date and start specified`);
+        console.warn(`Ignoring line ${theLineNumber} ${line}: no valid date and start specified`);
         continue;
       }
       else {
-        if (warnUserOrCancel(`Ignoring line ${ll} ${line}: no start time specified`)) 
+        if (warnUserOrCancel(`Ignoring line ${theLineNumber} ${line}: no start time specified`)) 
           continue;
         else
           return null;
@@ -1118,25 +1080,29 @@ function generateICal(data, calendarsToExport) {
       const monthCol = columns.get(CMONTH); 
       const lineMonth = line[monthCol];
       if (!lineMonth) {         // Guard against empty cell
-        bad(`Empty month`, ll, line[eventCol]);
+        bad(`Empty month`, theLineNumber, line[eventCol]);
         continue;
       }
       // allow either month number or string
       if (/^\d\d?$/.test(lineMonth)) {
         theMonth =  line[monthCol];
+        if (theMonth < 1 || theMonth > 12) {
+          bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, theLineNumber, line[eventCol]);
+          continue;
+        }
       }
       else {
-        if (!isValidMonth(lineMonth)) {
-          bad(`Bad month name ${lineMonth}`, ll, line[eventCol]);
+        if (!isMonth(lineMonth)) {
+          bad(`Bad month name ${lineMonth}`, theLineNumber, line[eventCol]);
           continue;
         }
         theMonth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
         if (!theMonth) {
-          bad(`Cannot understand month \"${lineMonth}\"`, ll, line[eventCol]);
+          bad(`Cannot understand month \"${lineMonth}\"`, theLineNumber, line[eventCol]);
           continue;
         }
         if (theMonth < 1 || theMonth > 12) {
-          bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, ll, line[eventCol]);
+          bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, theLineNumber, line[eventCol]);
           continue;
         }
       }
@@ -1144,12 +1110,10 @@ function generateICal(data, calendarsToExport) {
       // get the day number
       //theDay = line[columns.get(CDAY)];
       let matchDay;
-      //if (matchDay = line[columns.get(CDAY)].match(/^(\d\d?)(st|nd|rd|th)?/i)) {
       if (matchDay = (line[columns.get(CDAY)] || '').match(ORDINAL_DAY_PATT)) {  // Guard against empty cell
         theDay = matchDay[1];
       } else {
-        //if (!(/^\d\d?$/.test(theDay))) {
-        bad(`Cannot understand day number \"${theDay}\"`, ll, line[eventCol]); 
+        bad(`Cannot understand day number \"${theDay}\"`, theLineNumber, line[eventCol]); 
         continue; 
       }
 
@@ -1157,12 +1121,12 @@ function generateICal(data, calendarsToExport) {
       // parse a date
       const dateCol = columns.get(CDATE);
       if (!line[dateCol]) {
-        bad(`Empty date ${line[dateCol]}`, ll, line[eventCol]);
+        bad(`Empty date ${line[dateCol]}`, theLineNumber, line[eventCol]);
         continue;
       }
       const dayMonthYear = parseDate(line[dateCol]);
       if (!dayMonthYear) {
-        bad(`Bad date ${line[dateCol]}`, ll, line[eventCol]);
+        bad(`Bad date ${line[dateCol]}`, theLineNumber, line[eventCol]);
         continue;
       }
       //console.log(dayMonthYear);
@@ -1170,7 +1134,7 @@ function generateICal(data, calendarsToExport) {
       // check that any year value matches the year chosen 
       if ((dayMonthYear.length === 3) &&
           (dayMonthYear[2] != theDefaultYear)) {
-        if (!warnUserOrCancel(`Year (${dayMonthYear[2]}) on line ${ll} differs from ${theDefaultYear}\nIs this what you meant?`)) {
+        if (!warnUserOrCancel(`Year (${dayMonthYear[2]}) on line ${theLineNumber} differs from ${theDefaultYear}\nIs this what you meant?`)) {
             //text = null;
             return null;
         }
@@ -1180,17 +1144,22 @@ function generateICal(data, calendarsToExport) {
       }
   
       theDay = dayMonthYear[0];
-      //theMonth = dayMonthYear[1].match(/^\d+$/) ?
-      theMonth = dayMonthYear[1].match(INTEGER_PATT) ? 
+      theMonth = dayMonthYear[1].match(INTEGER_PATT) ?  
         dayMonthYear[1] :
         months.get(dayMonthYear[1].substr(0, 3));
+      if (theMonth < 1 || theMonth > 12) {
+        bad(`Invalid month ${theMonth}`, theLineNumber);
+        continue;
+      }
       //console.log('theDay - theMonth', theDay, theMonth);
       theYear = dayMonthYear[2];
     }
 
-    // Check that the date is valid
+    // Check that the date is valid 
     if (new Date(theYear, theMonth-1, theDay).getMonth() != theMonth-1) {
-      bad(`${theDay}/${theMonth}/${theYear} is not a valid date`, ll, line[eventCol]);
+      console.log(new Date(theYear, theMonth-1, theDay).getMonth());
+      console.log(`theYear ${theYear}, theMonth-1 ${theMonth-1}, theDay ${theDay}`);
+      bad(`Not a valid date`, theLineNumber, line[eventCol]);
       continue;
     }
     
@@ -1198,8 +1167,8 @@ function generateICal(data, calendarsToExport) {
     // Discard any lines with no event.
     let theEvent = line[columns.get(CEVENT)];
     if ( !theEvent ) {
-      console.warn(`Ignoring line ${ll} ${line}: no event specified`);
-      if(!warnUserOrCancel(`Ignoring line ${ll} ${line}: no event specified`)) {
+      console.warn(`Ignoring line ${theLineNumber} ${line}: no event specified`);
+      if(!warnUserOrCancel(`Ignoring line ${theLineNumber} ${line}: no event specified`)) {
         return null;
       }
       continue;
@@ -1215,13 +1184,13 @@ function generateICal(data, calendarsToExport) {
     // Must have a Start time
     const theTimes = getTimes(line, start);
     if (!theTimes) {
-      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, ll, line[eventCol]); 
+      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, theLineNumber, line[eventCol]); 
       continue; 
     }
     theHour = theTimes.H;
     theMin = theTimes.M;
     if (theHour > 23 || theMin >59) {
-      bad(`Start time ${line[columns.get(CSTART)]} is invalid`, ll, line[eventCol]); 
+      bad(`Start time ${line[columns.get(CSTART)]} is invalid`, theLineNumber, line[eventCol]); 
       continue; 
     }
       
@@ -1234,11 +1203,10 @@ function generateICal(data, calendarsToExport) {
     let matchTime;
     if (columns.has(CEND) && line[columns.get(CEND)]) {
       const endCol = columns.get(CEND);
-      //if (matchTime = line[endCol].match(/^(\d\d?)[:\.]?(\d\d)/)) {
       if (matchTime = line[endCol].match(TIME_PATT)) {
         if ((+theHour > + matchTime[1]) ||
             ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
-          if (!warnUserOrCancel(`Event on line ${ll} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
+          if (!warnUserOrCancel(`Event on line ${theLineNumber} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
                 `${line[startCol]} and ${line[endCol]}`)) {
             text = null;
             return null;
@@ -1246,13 +1214,13 @@ function generateICal(data, calendarsToExport) {
         }
         theEndHour = matchTime[1].padStart(2, '0');
         theEndMin = matchTime[2];
-        if (theEndHour > 23 || theENDMin >59) {
-          bad(`End time ${line[endCol]} is invalid`, ll, line[eventCol]); 
+        if (theEndHour > 23 || theEndMin >59) {
+          bad(`End time ${line[endCol]} is invalid`, theLineNumber, line[eventCol]); 
           continue; 
         }
       }
       else {
-        bad(`Cannot understand End time ${line[endCol]}`, ll, line[eventCol]); 
+        bad(`Cannot understand End time ${line[endCol]}`, theLineNumber, line[eventCol]); 
         continue; 
       }
     }
@@ -1260,17 +1228,12 @@ function generateICal(data, calendarsToExport) {
     // Or may have a Duration
     else if (columns.has(CDURATION) && line[columns.get(CDURATION)]) {
       //console.log(line[columns.get(CEVENT)], line[columns.get(CSTART)], line[columns.get(CDURATION)]);
-      //if (matchTime = line[columns.get(CDURATION)].match(/^(\d\d?)([:\.]\d\d)?/)) { 
       if (matchTime = line[columns.get(CDURATION)].match(DURATION_PATT)) {
         theEndHour = +theHour + +matchTime[1];
-        //if (matchTime[2]) {
-        //  //matchTime[2] = matchTime[2].match(/\d\d/);
-        //  matchTime[2] = matchTime[2];
-        //}
         theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
       }
       else {
-        bad(`Cannot understand the Duration ${line[columns.get(CDURATION)]}`, ll, line[columns.get(CEVENT)]); 
+        bad(`Cannot understand the Duration ${line[columns.get(CDURATION)]}`, theLineNumber, line[columns.get(CEVENT)]); 
         continue; 
       }
     }
@@ -1288,7 +1251,7 @@ function generateICal(data, calendarsToExport) {
       theEndMin -= 60;
     }
     if (theEndHour >= 24) {
-      if (!warnUserOrCancel(`Event on line ${ll} cannot span midnight! ${theEvent}, ${theHour}`)) {
+      if (!warnUserOrCancel(`Event on line ${theLineNumber} cannot span midnight! ${theEvent}, ${theHour}`)) {
         text = null;
         return null;
       }
@@ -1509,7 +1472,6 @@ function openICalWindow(calendarsToExport, iCal) {
     filename = 'myCalendar.ics';
   }
   console.log('filename', filename);
-  //heading.innerHTML = title; 
   heading.textContent = title;   // textContent rather than innerHTML to prevent injection
   newWindow.document.body.appendChild(heading);
 
@@ -1517,28 +1479,16 @@ function openICalWindow(calendarsToExport, iCal) {
   const link = newWindow.document.createElement("a");
   link.id = 'download-link';
   link.download = filename;
-  //link.innerHTML = "Download iCalendar";
   link.textContent = "Download iCalendar";
   link.href = window.URL.createObjectURL(blob);
   newWindow.document.body.appendChild(link);
 
   const pre = newWindow.document.createElement("pre");
-  //pre.innerHTML = iCal; 
   pre.textContent = iCal; 
   newWindow.document.body.appendChild(pre);
   newWindow.document.write('</body></html>');
   newWindow.addEventListener('pagehide', () => URL.revokeObjectURL(link.href));
 }
-
-
-/**
- * Abort execution
- *  @param msg The abort message
-function abort(msg) {
-  console.warn(msg);
-  alert(msg);
-}
- */
 
 
 const OKCancel = '\n(Press OK to continue or Cancel to abort)';
@@ -1565,6 +1515,7 @@ function bad(msg, lno, evt) {
       `BAD RECORD: ${msg} on line ${lno} for event ${evt} so ignoring this line.` :
       `BAD RECORD: ${msg} on line ${lno} so ignoring this line.` ;
   console.warn(message);
+  console.trace(message);
   if (confirm(message)) {
     return;
   } else {
@@ -1585,6 +1536,8 @@ TODO Bugs and possible improvements.
    . isMonth() - cardinal number, or month name or abbreviation
    . isTime() - \d\d\d\d, \d\d:\d\d, \d\d.\d\d, TBA, TBC, NA, N/A
    Probably, don't bother as we now let user bail out early.
+
+2. Could check that any weekday given is correct.
 
 From Robert 10/9/23
 It would be good to have a description on what the dropdowns are looking for, and what happens if they're not selected. For example:If a field in the dropdowns isn't used, what happens? For example: End; Duration and Calendar. Does it assume something for these?
