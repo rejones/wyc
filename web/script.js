@@ -227,8 +227,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Generate the range of years
   const currentYear = new Date().getFullYear();
-  const startYear = currentYear - 1;
-  const endYear = currentYear + 2;
+  const startYear = currentYear - 5;
+  const endYear = currentYear + 10;
 
   // Set these years in a dropdown list, with currentYear selected
   for (let year = startYear; year <= endYear; year++) {
@@ -1087,7 +1087,8 @@ function generateICal(data, calendarsToExport) {
       if (/^\d\d?$/.test(lineMonth)) {
         theMonth =  line[monthCol];
         if (theMonth < 1 || theMonth > 12) {
-          bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, theLineNumber, line[eventCol]);
+          //bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, theLineNumber, line[eventCol]);
+          bad(`Invalid month ${line[monthCol]}`, theLineNumber, line[eventCol]);
           continue;
         }
       }
@@ -1102,7 +1103,8 @@ function generateICal(data, calendarsToExport) {
           continue;
         }
         if (theMonth < 1 || theMonth > 12) {
-          bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, theLineNumber, line[eventCol]);
+          //bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, theLineNumber, line[eventCol]);
+          bad(`Invalid month ${line[monthCol]}`, theLineNumber, line[eventCol]);
           continue;
         }
       }
@@ -1113,7 +1115,10 @@ function generateICal(data, calendarsToExport) {
       if (matchDay = (line[columns.get(CDAY)] || '').match(ORDINAL_DAY_PATT)) {  // Guard against empty cell
         theDay = matchDay[1];
       } else {
-        bad(`Cannot understand day number \"${theDay}\"`, theLineNumber, line[eventCol]); 
+        if (theDay)
+          bad(`Cannot understand day number \"${theDay || ''}\"`, theLineNumber, line[eventCol]); 
+        else
+          bad(`Cannot understand day number`, theLineNumber, line[eventCol]); 
         continue; 
       }
 
