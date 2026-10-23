@@ -144,8 +144,10 @@ number of columns is 60.
   <li>A <strong>Start</strong> column. 
       Entries in the start column should be times using a 24-hour clock.<br> 
       Acceptable entries include "1400" and "14:00". 
+      <!--
       Excel Time format can be used here (see under <a href="#errors">Errors</a>
       below).
+      -->
       However, "TBA", "TBC", "NA" and "N/A" are also accepted.<br>
       Lines without valid Start times (such as headers, blank lines) are
       ignored.
@@ -173,16 +175,20 @@ These columns are optional and do not need to be selected.
       end time of an event. 
       Otherwise, the end time will be the start time plus the duration.<br>
       Entries in the start column should be times using a 24-hour clock.<br> 
-      Acceptable entries include "1400" and "14:00",
+      Acceptable entries include "1400" and "14:00".
+      <!--
       and Excel Time format (see <a href="#errors">Errors</a> below).
+      -->
   </li>
   <li>A <b>Duration</b> column.<br>
       If this column is specified, any entry in this column will be used for the
       duration of an event.
       Otherwise, the event will be given the default duration from the 
       <span class="instr-box">Duration</span> box.
-      Acceptable entries include "2", "0:45", "2:30", "2.30", "3h", "3h15",  and Excel Time format
-      (see <a href="#errors">Errors</a> below).
+      Acceptable entries include "2", "0:45", "2:30", "2.30", "3h", "3h15".
+      <!--
+      and Excel Time format (see <a href="#errors">Errors</a> below).
+      -->
   </li>
   <li>A <b>Calendar</b> column.<br>
       This is intended to allow separate calendars to be generated from a
@@ -204,14 +210,19 @@ These columns are optional and do not need to be selected.
   <li>If you specify a <strong>Date</strong> column, ensure that there are no missing
       spaces between words, no misspelt words.
   </li>
-  <li>Be careful with Excel Date and Time formats.<br>
+  <li>Avoid Excel Date and Time formats which represent these as 
+      <!--
+      Be careful with Excel Date and Time formats.<br>
       Excel usually represents these as 
+      -->
       the number of days since 1 January 1900 (the integral part)
       / the fraction of 24 hours (the fractional part).
-      However, one Excel preference uses 1904 rather than 1900;
-      avoid the 1904 format.<br>
+      Worse, one Excel preference counts from 1904 rather than 1900.
+      <!--
+      Avoid the 1904 format.<br>
       If you use a Date or Time format, ensure that it is for the year you want:
       Excel is quite good at using a year in the early 1900s instead!
+      -->
   </li>
   </ul>
 </p>
