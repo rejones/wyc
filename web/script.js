@@ -23,7 +23,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+    https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -121,12 +121,12 @@ const H = 'H';         // needed for the DEFAULT_DURATION value
 const ALERT = 2;     // 2 hours warning
 
 // To Be Announced times
-const TBAhour = '09';             // so set the period to be 9.00 - 17.00
-const TBAend_hour = '17';
+const TBAhour = 0;             // so set the period to be 00.00 - 23.00
+const TBAend_hour = 23;
 const TBAstring = ' (times TBC)'; // string to add to TBA events
 // Not Applicable times
-const NAhour = '09';              // so set the period to be 9.00 - 17.00
-const NAend_hour = '17';
+const NAhour = 0;              // so set the period to be 00.00 - 23.00
+const NAend_hour = 23;
 
 const T = 'T';
 const Z = 'Z';      // 'Z' means UTC rather than local time
@@ -143,9 +143,9 @@ let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 // Regular expressions
 const TBA_PATT = /^(TBA|TBC|-)$/i;                   // TBA or tbc, etc Could strengthen with ^$
 const NA_PATT = /^(N\/?A|-$)/i;                      // N/A or NA Could strengthen with ^$
-const TIME_PATT = /^(\d\d?)[:\.]?(\d\d)$/;           // A time such as 9:30, 12.15 or 1100
-const DURATION_PATT = /^(\d\d?)[:\.]?(\d\d)?$/;      // A duration as 1, 2:30, 3.15 or 1100
-const ANY_TIME_PATT = /^(\d\d?[:\.]?\d\d|TB[AC]|N\/?A|-)$/i;     // A time or TBA or N/A etc 
+const TIME_PATT = /^(\d\d?)[:\.h]?(\d\d)$/;           // A time such as 9:30, 12.15, 2h00 or 1100
+const DURATION_PATT = /^(\d\d?)(?:h|[h:.](\d\d))?$/;  // A duration as 1, 2:30, 3.15, 4h or 2h00 but not 1100
+const ANY_TIME_PATT = /^(\d\d?[:\.h]?\d\d|TB[AC]|N\/?A|-)$/i;     // A time or TBA or N/A etc 
 const DATE_PATT = /^(\d\d?)[-\/\. ](\d\d?)[-\/\. ](\d{2,4})$/;   // A date such as 17/10/2026 or 1.6.26 
 const ORDINAL_DAY_PATT = /^(\d\d?)(st|nd|rd|th)?$/i; // Ordinal day eg 12th
 const INTEGER_PATT = /^\d+$/;                        // An integer
@@ -179,6 +179,7 @@ class AbortError extends Error {
 // Capture all otherwise uncaught errors
 window.onerror = function (evt, source, lineno, colno, error) {
   if (error instanceof TypeError) {
+      console.trace(evt, source, lineno, colno, error);
       alert("It looks like you have accessed this page with the http: protocol.\n" +
             "You must use https:");
   } 
@@ -249,7 +250,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     if (matchTime) {
       DEFAULT_DURATION_HOUR = +matchTime[1];
-      DEFAULT_DURATION_MIN =  matchTime[2] ? +matchTime[2] : 0;
+      DEFAULT_DURATION_MIN =  matchTime[2] ? +(matchTime[2].slice(1)) : 0; // remove [:h]
     } 
     else {
       durationBox.value = DEFAULT_DURATION;
@@ -920,28 +921,55 @@ function parseDate(rowDate) {
     [days[0], months[0]];
 }
 
+
 /**
- * Get the start time
+ * Get the time
  * @line The line
- * @start The start column value
- * @return Start hour, minute, end hour, minute object or null if not a valid start time
+ * @time The time column value
+ * @return The hour, minute and true if TBA/ NA or -,  or null if not a valid time
  */
-function getTimes(line, start) {
+function getTimes(line, time) {
   let matchTime;
-  if (matchTime = start.match(TIME_PATT)) {
-    const theHour = matchTime[1].padStart(2, '0');
+  if (matchTime = time.match(TIME_PATT)) {
+    //const theHour = matchTime[1].padStart(2, '0');
+    //const theMin = matchTime[2].padStart(2, '0');;
+    const theHour = matchTime[1];
     const theMin = matchTime[2];
-    return {H: theHour, M: theMin, EH: null, EM: null};
+    return {H: +theHour, M: +theMin, TBA: false};          // +null returns 0
   }
-  else if (start.match(TBA_PATT) ||
-            start === '') {
-    return {H: TBAhour, M: '00', EH: TBAend_hour, EM: '00'};
+  else if (time.match(TBA_PATT) || time === '-' || time === '') {
+    return {H: TBAhour, M: 0, TBA: true};
   }
-  else if (start.match(NA_PATT)) { 
-    return {H: NAhour, M: '00', EH: NAend_hour, EM: '00'};
+  else if (time.match(NA_PATT)) { 
+    return {H: NAhour, M: 0, TBA: true};
   }   
   else return null;
 }
+
+
+/**
+ * Get a duration
+ * @line The line
+ * @time The duration column value
+ * @return The hour, minute and true if TBA/ NA or -,  or null if not a valid duration
+ */
+function getDuration(line, time) {
+  let matchTime;
+  if (matchTime = time.match(DURATION_PATT)) {
+    const theHour = matchTime[1];
+    const theMin = matchTime[2];  
+    console.log(`getDuration (line ${theLineNumber}): time=${time} H=${theHour} M=${theMin}`);
+    return {H: +theHour, M: +theMin, TBA: false};
+  }
+  else if (time.match(TBA_PATT) || time === '-' || time === '') {
+    return {H: DEFAULT_DURATION_HOUR, M: DEFAULT_DURATION_MIN, TBA: true};
+  }
+  else if (time.match(NA_PATT)) { 
+    return {H: DEFAULT_DURATION_HOUR, M: DEFAULT_DURATION_MIN, TBA: true};
+  }   
+  else return null;
+}
+
 
 
 /**
@@ -1053,11 +1081,11 @@ function generateICal(data, calendarsToExport) {
     if ( !start || !start.match(ANY_TIME_PATT) ) {
       // Ignore lines like header lines where date and start are both invalid
       if (!hasDate(line, theDefaultYear)) {
-        console.warn(`Ignoring line ${theLineNumber} ${line}: no valid date and start specified`);
+        console.warn(`Ignoring line ${theLineNumber} ${line}: valid date and/or start not specified`);
         continue;
       }
       else {
-        if (warnUserOrCancel(`Ignoring line ${theLineNumber} ${line}: no start time specified`)) 
+        if (warnUserOrCancel(`Ignoring line ${theLineNumber} ${line}: valid start time not specified`)) 
           continue;
         else
           return null;
@@ -1072,7 +1100,8 @@ function generateICal(data, calendarsToExport) {
       }
     }
 
-    // Get the day and month
+    // GET THE DAY AND MONTH
+
     let theDay, theMonth, theYear;
 
     if (columns.has(CDAY) && columns.has(CMONTH)) {
@@ -1109,7 +1138,7 @@ function generateICal(data, calendarsToExport) {
         }
       }
 
-      // get the day number
+      // GET THE DAY NUMBER
       //theDay = line[columns.get(CDAY)];
       let matchDay;
       if (matchDay = (line[columns.get(CDAY)] || '').match(ORDINAL_DAY_PATT)) {  // Guard against empty cell
@@ -1168,7 +1197,8 @@ function generateICal(data, calendarsToExport) {
       continue;
     }
     
-    // Get the event. 
+    // GET THE EVENT. 
+
     // Discard any lines with no event.
     let theEvent = line[columns.get(CEVENT)];
     if ( !theEvent ) {
@@ -1179,7 +1209,8 @@ function generateICal(data, calendarsToExport) {
       continue;
     }
 
-    // Get the start and end times
+    // GET THE START AND END TIMES
+
     // times before 1000 are sometimes recorded with only 3 digits
     let theHour;
     let theMin;
@@ -1188,26 +1219,53 @@ function generateICal(data, calendarsToExport) {
 
     // Must have a Start time
     const theTimes = getTimes(line, start);
+    let hasTBA = false; // Need to check times unless TBA, NA, - etc
     if (!theTimes) {
       bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, theLineNumber, line[eventCol]); 
       continue; 
     }
     theHour = theTimes.H;
     theMin = theTimes.M;
+    hasTBA = theTimes.TBA;
     if (theHour > 23 || theMin >59) {
       bad(`Start time ${line[columns.get(CSTART)]} is invalid`, theLineNumber, line[eventCol]); 
       continue; 
     }
-      
-    theEndHour = theTimes.EH;
-    theEndMin = theTimes.EM;
-    if (theHour === TBAhour) 
-      theEvent = theEvent + TBAstring;
+
+    switch (theHour) {
+      case TBAhour: theEndHour = TBAend_hour;
+                    theEndMin = 0;
+                    theEvent = theEvent + TBAstring;
+                    break;
+      case NAhour: theEndHour = NAend_hour;
+                   theEndMin = 0;
+                   break;
+      default: theEndHour = +theHour + +DEFAULT_DURATION_HOUR;
+               theEndMin = +DEFAULT_DURATION_MIN;
+    }
 
     // May have an End time
-    let matchTime;
     if (columns.has(CEND) && line[columns.get(CEND)]) {
       const endCol = columns.get(CEND);
+      const theEndTimes = getTimes(line, line[endCol]);
+      if (!theEndTimes) {
+        bad(`Cannot understand End time ${line[columns.get(CEND)]}`, theLineNumber, line[eventCol]); 
+        continue; 
+      }
+      //console.log(`Line ${theLineNumber}: theHour: ${theHour}:${theMin}:${theTimes.TBA}, theEndHour: ${theEndHour}:${theEndMin}:${theEndTimes.TBA}`);
+      if (!theEndTimes.TBA) {
+        theEndHour = theEndTimes.H;
+        theEndMin = theEndTimes.M;
+      }
+      if (+theEndHour > 23 || +theEndMin >59) {
+        bad(`End time ${line[columns.get(CEND)]} is invalid`, theLineNumber, line[eventCol]); 
+        continue; 
+      }
+      //console.log(`Line ${theLineNumber}: theEndHour: ${theEndHour}:${theEndMin}:${theEndTimes.TBA}`);
+
+
+      /* BETTER TO CHECK AFTER WE HAVE A DURATION, IF ANY
+      let matchTime;
       if (matchTime = line[endCol].match(TIME_PATT)) {
         if ((+theHour > + matchTime[1]) ||
             ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
@@ -1228,11 +1286,29 @@ function generateICal(data, calendarsToExport) {
         bad(`Cannot understand End time ${line[endCol]}`, theLineNumber, line[eventCol]); 
         continue; 
       }
+      */
     }
 
     // Or may have a Duration
     else if (columns.has(CDURATION) && line[columns.get(CDURATION)]) {
       //console.log(line[columns.get(CEVENT)], line[columns.get(CSTART)], line[columns.get(CDURATION)]);
+      const theDurationTimes = getDuration(line, line[columns.get(CDURATION)]);
+      if (!theDurationTimes) {
+        bad(`Cannot understand Duration time ${line[columns.get(CDURATION)]}`, theLineNumber, line[eventCol]); 
+        continue; 
+      }
+      //if ( (theDurationTimes.H != TBAhour) && (theDurationTimes != NAhour) ) {
+      if (!theDurationTimes.TBA) {
+        if (+theDurationTimes.M >= 60) {
+          bad(`Duration minutes (${line[columns.get(CDURATION)]}) must be less than 60.`, theLineNumber, line[eventCol]); 
+          continue; 
+        }
+        theEndHour = +theHour + +theDurationTimes.H;
+        theEndMin = +theMin + +theDurationTimes.M;
+      }
+      console.log(`theEnd ${theEndHour}:${theEndMin}, duration ${theDurationTimes.H}:${theDurationTimes.M}`);
+      /*
+      let matchTime;
       if (matchTime = line[columns.get(CDURATION)].match(DURATION_PATT)) {
         theEndHour = +theHour + +matchTime[1];
         theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
@@ -1241,29 +1317,42 @@ function generateICal(data, calendarsToExport) {
         bad(`Cannot understand the Duration ${line[columns.get(CDURATION)]}`, theLineNumber, line[columns.get(CEVENT)]); 
         continue; 
       }
+      */
     }
 
     else {
       // assume more than one race if event string includes 
       // more than one separate number, and allow an extra hour 
-      theEndHour = +theHour + (/\d\D+\d/.test(theEvent) ? DEFAULT_DURATION_HOUR + DEFAULT_EXTENSION_HOUR : DEFAULT_DURATION_HOUR);
-      theEndMin = +theMin + DEFAULT_DURATION_MIN;
+      theEndHour = +theHour + ( /\d\D+\d/.test(theEvent)
+                                  ? +DEFAULT_DURATION_HOUR + +DEFAULT_EXTENSION_HOUR
+                                  : +DEFAULT_DURATION_HOUR
+                               );
+      theEndMin = +theMin + +DEFAULT_DURATION_MIN;
     }
 
     // Fix / warn about out of range times
-    while (theEndMin >= 60) {
+    while (+theEndMin >= 60) {
       theEndHour = +theEndHour + 1;
       theEndMin -= 60;
     }
-    if (theEndHour >= 24) {
+    if (+theEndHour >= 24) {
       if (!warnUserOrCancel(`Event on line ${theLineNumber} cannot span midnight! ${theEvent}, ${theHour}`)) {
         text = null;
         return null;
       }
-      theEndHour = '23';
-      theEndMin = '59';
+      theEndHour = 23;
+      theEndMin = 59;
     }
-    theEndHour = String(theEndHour).padStart(2, '0');
+
+    
+    if ( (+theEndHour < +theHour) || ((+theEndHour == +theHour) && (+theEndMin <= +theMin)) ) {
+      if (!warnUserOrCancel(`Event ( ${theEvent}) on line ${theLineNumber} ends before it starts! (${theHour}:${theMin}, ${theEndHour}:${theEndMin})`)) {
+        text = null; // TODO is this needed?
+        return null;
+      }
+    }
+      
+    theEndHour = String(theEndHour).padStart(2, '0'); // TODO is this necessary? convHourUTC does this
     theEndMin = String(theEndMin).padStart(2, '0');
 
 
