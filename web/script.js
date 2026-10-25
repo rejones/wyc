@@ -934,6 +934,9 @@ function parseDate(rowDate) {
     console.log(`rowDate (${rowDate}) is a number (line ${theLineNumber}`);
     if (rowDate < JANUARY_1_2020) {
       if (!warnUserOrCancel(`Line ${theLineNumber}: "${rowDate}" does not look like a date.`)) {
+        // TODO If user accepts, then they also get a year differs warning with a year interpreted
+        // as an Excel year, e.g. "12" shown as "1900". This is misleading. 
+        // For the moment, I have changed the year differs message.
         return null;
       }
     }
@@ -1051,6 +1054,9 @@ function parseDate(rowDate) {
       default: return null;                  // too many 2-digit numbers
     }
   }
+
+  if (numbers.length != 0)                   // Should have used all the numbers (day, year if any)
+    return null;
 
   return theYear ? [ theDay, theMonth, theYear ] 
                  : [ theDay, theMonth ];
@@ -1334,7 +1340,7 @@ function generateICal(data, calendarsToExport) {
       // check that any year value matches the year chosen 
       if ((dayMonthYear.length === 3) &&
           (dayMonthYear[2] != theDefaultYear)) {
-        if (!warnUserOrCancel(`Line ${theLineNumber}: Year "${dayMonthYear[2]}" on  differs from ${theDefaultYear}\nIs this what you meant?`)) {
+        if (!warnUserOrCancel(`Line ${theLineNumber}: Year "${line[dateCol]}" differs from ${theDefaultYear}\nIs this what you meant?`)) {
             //text = null;
             return null;
         }
@@ -1528,7 +1534,7 @@ function generateICal(data, calendarsToExport) {
                       String(theEndHour).padStart(2, '0'), String(theEndMin).padStart(2, '0'),
                       thePrefix, theEvent, String(highwater));
     // For testing
-    console.log(`+++EVENT ${theEvent} ${theDay}/${theMonth}/${theYear} ${theHour.padStart(2, '0')}:${theMin.padStart(2, '0')}-${theEndHour.padStart(2, '0')}:${theEndMin.padStart(2, '0')}`);
+    console.log(`+++EVENT ${theEvent} ${theDay}/${theMonth}/${theYear} ${String(theHour).padStart(2, '0')}:${String(theMin).padStart(2, '0')}-${String(theEndHour).padStart(2, '0')}:${String(theEndMin).padStart(2, '0')}`);
   }
 
   text += printEOCAL();
