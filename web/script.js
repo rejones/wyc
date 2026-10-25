@@ -34,7 +34,7 @@ limitations under the License.
 
 'use strict';
 
-const dayNames = ['Sun', 'Mon', 'Tues', 'Weds', 'Thurs', 'Fri', 'Sat'];
+const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Weds'];
 const monthNames = ['January','February','March','April','May','June','July','August',
           'September','October','November','December'];
 
@@ -143,10 +143,11 @@ let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 // Regular expressions
 const TBA_PATT = /^(TBA|TBC|-)$/i;                   // TBA or tbc, etc Could strengthen with ^$
 const NA_PATT = /^(N\/?A|-$)/i;                      // N/A or NA Could strengthen with ^$
-const TIME_PATT = /^(\d\d?)[:\.h]?(\d\d)$/;           // A time such as 9:30, 12.15, 2h00 or 1100
-const DURATION_PATT = /^(\d\d?)(?:h|[h:.](\d\d))?$/;  // A duration as 1, 2:30, 3.15, 4h or 2h00 but not 1100
-const ANY_TIME_PATT = /^(\d\d?[:\.h]?\d\d|TB[AC]|N\/?A|-)$/i;     // A time or TBA or N/A etc 
-const DATE_PATT = /^(\d\d?)[-\/\. ](\d\d?)[-\/\. ](\d{2,4})$/;   // A date such as 17/10/2026 or 1.6.26 
+const TIME_PATT = /^(\d\d?)[:.h]?(\d\d)(?:[:.]?\d\d)?$/;                   // A time such as 9:30, 12.15, 2h00 or 1100 and optional seconds
+const DURATION_PATT = /^(\d\d?)(?:h|[h:.](\d\d)(?:[:.]?\d\d)?)?$/;        // A duration as 1, 2:30, 3.15, 4h or 2h00 but not 1100
+const ANY_TIME_PATT = /^(\d\d?[:.h]?\d\d(?:[:.]?\d\d)?|TB[AC]|N\/?A|-)$/i; // A time or TBA or N/A etc 
+const DATE_PATT = /^(\d\d?)[-\/. ](\d\d?)[-\/. ](\d{2,4})$/;   // A date such as 17/10/2026 or 1.6.26 
+const REV_DATE_PATT = /^(\d\d\d\d)[-\/. ](\d\d?)[-\/. ](\d\d)$/;   // A date such as 2026/10/19 or 26.6.19 
 const ORDINAL_DAY_PATT = /^(\d\d?)(st|nd|rd|th)?$/i; // Ordinal day eg 12th
 const INTEGER_PATT = /^\d+$/;                        // An integer
 
@@ -180,14 +181,15 @@ class AbortError extends Error {
 window.onerror = function (evt, source, lineno, colno, error) {
   if (error instanceof TypeError) {
       console.trace(evt, source, lineno, colno, error);
-      alert("It looks like you have accessed this page with the http: protocol.\n" +
-            "You must use https:");
+      alert(`Line  ${1+lineno}: UNEXPECTED TypeError.`);
   } 
+  if (error instanceof ReferenceError) {
+      console.trace(evt, source, lineno, colno, error);
+      alert(`Line  ${1+lineno}: ReferenceError. Please report.`);
+  }
   else if (!(error instanceof AbortError)) {
-    console.warn(`Unexpected error at line ${1+lineno}!\n`, evt, error);
-    alert(`Unexpected error at line ${1+lineno}!\n` +
-           error +
-           "\nPlease report");
+    console.warn(`Line ${1+lineno}: UNEXPECTED ERROR\n`, evt, error);
+    alert(`Line ${1+lineno}: UNEXPECTED ERROR. Please report.`);
   }
 }
 
@@ -204,6 +206,40 @@ function reportError(e) {
   } 
   else {
     throw e;                   // real bugs still reach window.onerror
+  }
+}
+
+
+const OKCancel = '\n(Press OK to continue or Cancel to abort)';
+/**
+ * Warn user and log
+ * @param msg The alert message
+ * @return true if user wants to continue, else false
+ */
+function warnUserOrCancel(msg) {
+  console.warn(msg);
+  //alert(msg);
+  return confirm(msg + OKCancel);
+}
+
+
+/**
+ * Warn about bad record in the spreadsheet
+ * @param msg The error message
+ * @param lno The number of the line on which the error was found
+ * @param evt The name of the event
+ */
+function bad(msg, lno, evt) {
+  const message = evt ? 
+      `Line ${lno}: bad record. ${msg} for event "${evt}" so ignoring this line.` :
+      `Line ${lno}: bad record. ${msg} so ignoring this line.` ;
+  console.warn(message);
+  console.trace(message);
+  if (confirm(message)) {
+    return;
+  } else {
+    alert("You have cancelled the run");
+    throw new AbortError('Run aborted');
   }
 }
 
@@ -357,7 +393,7 @@ function loadFile(file) {
   
       let sheetName;
       let jsonData;
-      const options = { skipHidden: true, raw: false, header: 1 };
+      const options = { skipHidden: true, raw: true, header: 1 };  // was raw:false
   
       if (workbook.SheetNames.length == 1) {
         // only one sheet
@@ -510,10 +546,11 @@ function renderTable(data) {
       // formatting in Excel.
 
       // not used anymore
+      /*
       if (cell instanceof Date) {
         console.log(`Found an excelDate on row ${row}: ${cell}, ${cell%1}, ${typeof cell}`);
         // Try to tidy incomplete Excel values
-        if (cell.getHours()==0 && cell.getMinutes()==0) { // Looks like a date
+        if (cell.getFullYear() >= 1900 && cell.getHours()==0 && cell.getMinutes()==0) { // Looks like a date
           cellValue = `${dayNames[cell.getDay()]} ${cell.getDate()} ${monthNames[cell.getMonth()]}`;
           const year = cell.getFullYear();
           if (year > 1904) { // Otherwise, user probably didn't specify year so likely to be 1899 or 1903
@@ -521,16 +558,33 @@ function renderTable(data) {
           }
         }
         else { // Probably a time
-          //cellValue = `${f(cell.getHours())}:${f(cell.getMinutes())}`;
-          cellValue = `${cell.getHours()}:${cell.getMinutes()}`;
+          cellValue = `${f(cell.getHours())}:${f(cell.getMinutes())}`;
+        }
+      }
+      */
+      if (cell instanceof Date) {
+        //console.log(`Found an excelDate on row ${row}: ${cell}, ${cell%1}, ${typeof cell}`);
+        // SheetJS can be a fraction of a millisecond short (10:00 comes out as 09:59:59.999),
+        // so round to the nearest minute before reading the hours and minutes
+        const d = new Date(Math.round(cell.getTime() / 60000) * 60000);
+        if (d.getFullYear() >= 1900) { // Has a date part (any time part is dropped)
+          cellValue = `${dayNames[d.getDay()]} ${d.getDate()} ${monthNames[d.getMonth()]}`;
+          if (d.getFullYear() > 1904) { // Otherwise, user probably didn't specify year
+            cellValue = cellValue + ` ${d.getFullYear()}`;
+          }
+        }
+        else { // A time on its own, which SheetJS dates in 1899
+          cellValue = `${f(d.getHours())}:${f(d.getMinutes())}`;
         }
       }
 
       // Check if the cell format is "hh:mm"
       else if (typeof cell === 'number') {
-        if (cell % 1 !== 0) { // A non-integer so assume this is a time
+        //if (cell % 1 !== 0) { // A non-integer so assume this is a time
+        if (cell % 1 !== 0 && cell < JANUARY_1_2020) { // A non-integer so assume this is a time
           
           // Steve Gray spreadsheet has times as decimal numbers, which is weird.
+          // With the Claude changes, a duration cell of 2.5 is treated as 2h50, not 2h30
           if ((1 <= cell) && (cell < 24.00)) {
             const hours = Math.floor(cell);
             const minutes = Math.round((cell - hours) * 100);
@@ -541,14 +595,20 @@ function renderTable(data) {
           }
           else {
             // Assume it's an Excel time
+            /*
             const excelTime = cell % 1; 
             const hours = Math.floor(excelTime * 24);
             const minutes = Math.round(((excelTime * 24) % 1) * 60);
+            */
+            const totalMinutes = Math.round((cell % 1) * 1440);
+            const hours = Math.floor(totalMinutes / 60) % 24;
+            const minutes = totalMinutes % 60;
             cellValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
           }
         }
         else if (cell > JANUARY_1_2020) { // Assume it's a date after 1 Jan 2020
-          const date = new Date(Date.UTC(0, 0, cell-1));
+          //const date = new Date(Date.UTC(0, 0, cell-1));
+          const date = new Date(Date.UTC(0, 0, Math.floor(cell-1)));
           if (!isNaN(date.getFullYear())) {
             cellValue = date.toDateString();
           }
@@ -672,6 +732,7 @@ function getKeyByValue(map, value) {
   }
   return null;
 }
+
 
 /**
  * Search the spreadsheet for calendars, if any
@@ -829,15 +890,29 @@ function createDTSTAMP() {
   return `${year}${month}${day}${T}${hours}${minutes}${seconds}`;
 }
 
+
 /**
  * Is a string a month (or prefix)?
- * @param {String} day The possible month string
+ * @param month The possible month string
  * @return True if so
  */
 function isMonth(month) {
   month = month.replace(/[\.,\s]+$/, '').toUpperCase();
   return monthNames.map(m => m.toUpperCase()).find((m) => {
       return m.startsWith(month);
+    }) != undefined;
+}
+
+
+/**
+ * Is a string a weekday (or prefix)?
+ * @param  day The possible weekday string
+ * @return True if so
+ */
+function isWeekDay(day) {
+  day = day.replace(/[\.,\s]+$/, '').toUpperCase();
+  return dayNames.map(m => m.toUpperCase()).find((m) => {
+      return m.startsWith(day);
     }) != undefined;
 }
 
@@ -858,7 +933,7 @@ function parseDate(rowDate) {
     // Try converting from Excel date to JS date
     console.log(`rowDate (${rowDate}) is a number (line ${theLineNumber}`);
     if (rowDate < JANUARY_1_2020) {
-      if (!warnUserOrCancel(`${rowDate} on line ${theLineNumber} does not look like a date.`)) {
+      if (!warnUserOrCancel(`Line ${theLineNumber}: "${rowDate}" does not look like a date.`)) {
         return null;
       }
     }
@@ -872,7 +947,7 @@ function parseDate(rowDate) {
     return [date.getDate().toString(), date.getMonth() + 1, date.getFullYear()].map((e) => {return e.toString()});
   }
   
-  // Next, try dd/mm/yy
+  // Next, try dd/mm/yy and yyyy/mm/dd
   let matchDate;
   if (matchDate = rowDate.match(DATE_PATT)) {
     const day = matchDate[1];
@@ -887,30 +962,119 @@ function parseDate(rowDate) {
     }
     return [day, month, year.toString()];
   }
+  else if (matchDate = rowDate.match(REV_DATE_PATT)) {
+    const day = matchDate[3];
+    const month = matchDate[2];
+    let year = +matchDate[1];
+    if ((0 <= year) && (year < 100)) {
+      year = year + 2000;
+    }
+    if (isNaN(new Date(year, month, day).valueOf())) {
+      console.warn('parseDate returns null!');
+      return null;
+    }
+    return [day, month, year.toString()];
+  }
+
 
   //Next, try numbers and words
 
   // Define the regular expression for the delimiters (spaces and commas)
-  const delimiterRE = /[,\s]+/;
+  const delimiterRE = /[-,\s]+/;
   const yearRE = /^\d{4}$/;
+
+  // New version
+  //  all of this to allow dates like 2 Jan
+  const ordinalRE =  /\b\d\d?\s*(st|nd|rd|th)/ig;
+  const ordinals = rowDate.match(ordinalRE) ?? [];      // get and patterns like "2 nd" into a list
+  let remainder = rowDate.replace(ordinalRE, '')        // remove any ordinal string
+                         .split(delimiterRE)            // split into a list of words
+                         .filter(it => it !== '')       // remove any empty elements
+                         .filter(x => !isWeekDay(x))    // remove any weekday names
+                         .map(it => it.toUpperCase());  // make all upper case
+                         // remainders contains month-names, cardinal numbers, junk
+  console.log('ordinals ', ordinals);
+  console.log('remainder ', remainder);
+
+  // gather ordinal days
+  let days = ordinals.map(t => t.match(/^\d\d?/)[0]);   // guaranteed that all elements match
+  console.log('days', days);
+  if (days.length > 1)
+    return null;                                        // Too many days found 
+  let theDay = (days.length == 1) ? days[0]             // we have the DAY
+                                  : null;
+  // if days.length == 0, No ordinal found but there may be a valid day number
+
+  // look for a single month
+  const months = remainder.filter(isMonth);              // get any months
+  console.log('months', months);
+  if (months.length != 1)                                // Either no month or more than 1!
+    return null;
+  const theMonth = months[0];                            // we have the MONTH
+
+  remainder = remainder.filter(x => !isMonth(x));        // remove any months
+  console.log('remainder without months', remainder);
+  // remainders contains cardinal numbers, junk
+
+  // look for a year as yyyy
+  let theYear = null;
+  let years = remainder.filter(y => y.match(/\b\d\d\d\d\b/));
+  switch (years.length) {
+    case 0: break;                                      // might be OK if we have eg 12 Jan 26
+    case 1: theYear = years[0];                         // we have the YEAR
+            break;
+    default: return null;                               // too many years
+  }
+  remainder = remainder.filter(y => !/\b\d\d\d\d\b/.test(y)); // Remove 4-digit years 
+  // remainders contains non 4-digit cardinal numbers, junk
+
+  // might have 2 1- or 2-digit numbers, e.g. from an input 10 Jan 26
+  let numbers = remainder.filter(y => y.match(/\b\d\d?\b/));       // 1- or 2-digit numbers
+  console.log('2-digit numbers', numbers);
+  remainder = remainder.filter(y => !/\b\d\d?\b/.test(y));         // Remove 4-digit years
+  console.log('remainder should be empty', remainder);
+  if (remainder.length != 0)                                       // this must be junk
+    return null;
+
+  if (!theDay) {
+    if (numbers.length != 0) 
+      theDay = numbers.shift();              // if not already found, the first element left must be the day dd
+    else
+      return null;                           // no day found
+  }
+  if (!theYear) { 
+    switch (numbers.length) {
+      case 0: theYear = null;                // No year found - fix this later
+      case 1: theYear = numbers.shift();     // if not already found, the second element must be the year yy
+              theYear = +theYear + 2000;     // 20yy
+              break;
+      default: return null;                  // too many 2-digit numbers
+    }
+  }
+
+  return theYear ? [ theDay, theMonth, theYear ] 
+                 : [ theDay, theMonth ];
+  
+
+  /*
   let dayMonthYear = rowDate.split(delimiterRE)
                      .filter(it => it !== '')              // remove any empty elements
                      .map(it => it.toUpperCase());         // make all upper case
                      //.filter(it => !isDay(it));          // remove any day names 
-  //console.log('dayMonthYear', dayMonthYear);
+  console.log('dayMonthYear', dayMonthYear);
   const years = dayMonthYear
                 .filter (it => yearRE.test(it));         // get any year
-  //console.log('years', years);
+  console.log('years', years);
   const dayMonth = dayMonthYear
                    .filter(it => !(yearRE.test(it)));   // remove any year
-  //console.log('dayMonth', dayMonth);
+  console.log('dayMonth', dayMonth);
   const days = dayMonth
                .filter(it => /^\d+(ST|ND|RD|TH)?$/.test(it))    // only day strings 
                .map(it => it.replace(/(ST|ND|RD|TH)$/,''));    // remove any ordinal characters
-  //console.log('days', days);
+  console.log('days', days);
   const months = dayMonth.filter(isMonth);              // get any month(s)
-  //console.log('months',months);
-  //console.log(days[0], months[0], years[0]);
+  console.log('months',months);
+  console.log(days[0], months[0], years[0]);
   if (days.length != 1 || months.length != 1) {                  // must have day and month numbers
     return null;  
   }
@@ -919,6 +1083,7 @@ function parseDate(rowDate) {
   return years.length ? 
     [days[0], months[0], years[0]] :
     [days[0], months[0]];
+  */
 }
 
 
@@ -969,7 +1134,6 @@ function getDuration(line, time) {
   }   
   else return null;
 }
-
 
 
 /**
@@ -1081,11 +1245,11 @@ function generateICal(data, calendarsToExport) {
     if ( !start || !start.match(ANY_TIME_PATT) ) {
       // Ignore lines like header lines where date and start are both invalid
       if (!hasDate(line, theDefaultYear)) {
-        console.warn(`Ignoring line ${theLineNumber} ${line}: valid date and/or start not specified`);
+        console.warn(`Ignoring line ${theLineNumber}: VALID DATE AND/OR START NOT SPECIFIED "${line}"`);
         continue;
       }
       else {
-        if (warnUserOrCancel(`Ignoring line ${theLineNumber} ${line}: valid start time not specified`)) 
+        if (warnUserOrCancel(`Ignoring line ${theLineNumber}: VALID START TIME NOT SPECIFIED "${line}"`)) 
           continue;
         else
           return null;
@@ -1117,23 +1281,23 @@ function generateICal(data, calendarsToExport) {
         theMonth =  line[monthCol];
         if (theMonth < 1 || theMonth > 12) {
           //bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, theLineNumber, line[eventCol]);
-          bad(`Invalid month ${line[monthCol]}`, theLineNumber, line[eventCol]);
+          bad(`INVALID MONTH "${line[monthCol]}"`, theLineNumber, line[eventCol]);
           continue;
         }
       }
       else {
         if (!isMonth(lineMonth)) {
-          bad(`Bad month name ${lineMonth}`, theLineNumber, line[eventCol]);
+          bad(`BAD MONTH NAME "${lineMonth}"`, theLineNumber, line[eventCol]);
           continue;
         }
         theMonth = months.get(lineMonth.toUpperCase().substr(0, MONTHS_PREFIX_LEN));
         if (!theMonth) {
-          bad(`Cannot understand month \"${lineMonth}\"`, theLineNumber, line[eventCol]);
+          bad(`CANNOT UNDERSTAND MONTH "${lineMonth}"`, theLineNumber, line[eventCol]);
           continue;
         }
         if (theMonth < 1 || theMonth > 12) {
           //bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, theLineNumber, line[eventCol]);
-          bad(`Invalid month ${line[monthCol]}`, theLineNumber, line[eventCol]);
+          bad(`INVALID MONTH "${line[monthCol]}"`, theLineNumber, line[eventCol]);
           continue;
         }
       }
@@ -1145,22 +1309,24 @@ function generateICal(data, calendarsToExport) {
         theDay = matchDay[1];
       } else {
         if (theDay)
-          bad(`Cannot understand day number \"${theDay || ''}\"`, theLineNumber, line[eventCol]); 
+          bad(`CANNOT UNDERSTAND DAY NUMBER "${theDay || ''}"`, theLineNumber, line[eventCol]); 
         else
-          bad(`Cannot understand day number`, theLineNumber, line[eventCol]); 
+          bad(`CANNOT UNDERSTAND DAY NUMBER`, theLineNumber, line[eventCol]); 
         continue; 
       }
 
-    } else if (columns.has(CDATE)) {
+    } 
+
+    else if (columns.has(CDATE)) {
       // parse a date
       const dateCol = columns.get(CDATE);
       if (!line[dateCol]) {
-        bad(`Empty date ${line[dateCol]}`, theLineNumber, line[eventCol]);
+        bad(`EMPTY DATE "${line[dateCol]}"`, theLineNumber, line[eventCol]);
         continue;
       }
       const dayMonthYear = parseDate(line[dateCol]);
       if (!dayMonthYear) {
-        bad(`Bad date ${line[dateCol]}`, theLineNumber, line[eventCol]);
+        bad(`BAD DATE "${line[dateCol]}"`, theLineNumber, line[eventCol]);
         continue;
       }
       //console.log(dayMonthYear);
@@ -1168,7 +1334,7 @@ function generateICal(data, calendarsToExport) {
       // check that any year value matches the year chosen 
       if ((dayMonthYear.length === 3) &&
           (dayMonthYear[2] != theDefaultYear)) {
-        if (!warnUserOrCancel(`Year (${dayMonthYear[2]}) on line ${theLineNumber} differs from ${theDefaultYear}\nIs this what you meant?`)) {
+        if (!warnUserOrCancel(`Line ${theLineNumber}: Year "${dayMonthYear[2]}" on  differs from ${theDefaultYear}\nIs this what you meant?`)) {
             //text = null;
             return null;
         }
@@ -1182,7 +1348,7 @@ function generateICal(data, calendarsToExport) {
         dayMonthYear[1] :
         months.get(dayMonthYear[1].substr(0, 3));
       if (theMonth < 1 || theMonth > 12) {
-        bad(`Invalid month ${theMonth}`, theLineNumber);
+        bad(`INVALID MONTH "${theMonth}"`, theLineNumber);
         continue;
       }
       //console.log('theDay - theMonth', theDay, theMonth);
@@ -1193,7 +1359,7 @@ function generateICal(data, calendarsToExport) {
     if (new Date(theYear, theMonth-1, theDay).getMonth() != theMonth-1) {
       console.log(new Date(theYear, theMonth-1, theDay).getMonth());
       console.log(`theYear ${theYear}, theMonth-1 ${theMonth-1}, theDay ${theDay}`);
-      bad(`Not a valid date`, theLineNumber, line[eventCol]);
+      bad(`NOT A VALID DATE`, theLineNumber, line[eventCol]);
       continue;
     }
     
@@ -1203,7 +1369,7 @@ function generateICal(data, calendarsToExport) {
     let theEvent = line[columns.get(CEVENT)];
     if ( !theEvent ) {
       console.warn(`Ignoring line ${theLineNumber} ${line}: no event specified`);
-      if(!warnUserOrCancel(`Ignoring line ${theLineNumber} ${line}: no event specified`)) {
+      if(!warnUserOrCancel(`Ignoring line ${theLineNumber}: no event specified " ${line}"`)) {
         return null;
       }
       continue;
@@ -1221,14 +1387,14 @@ function generateICal(data, calendarsToExport) {
     const theTimes = getTimes(line, start);
     let hasTBA = false; // Need to check times unless TBA, NA, - etc
     if (!theTimes) {
-      bad(`Cannot understand Start time ${line[columns.get(CSTART)]}`, theLineNumber, line[eventCol]); 
+      bad(`CANNOT UNDERSTAND START TIME "${line[columns.get(CSTART)]}"`, theLineNumber, line[eventCol]); 
       continue; 
     }
     theHour = theTimes.H;
     theMin = theTimes.M;
     hasTBA = theTimes.TBA;
     if (theHour > 23 || theMin >59) {
-      bad(`Start time ${line[columns.get(CSTART)]} is invalid`, theLineNumber, line[eventCol]); 
+     bad(`INVALID START TIME "${line[columns.get(CSTART)]}"`, theLineNumber, line[eventCol]); 
       continue; 
     }
 
@@ -1249,7 +1415,7 @@ function generateICal(data, calendarsToExport) {
       const endCol = columns.get(CEND);
       const theEndTimes = getTimes(line, line[endCol]);
       if (!theEndTimes) {
-        bad(`Cannot understand End time ${line[columns.get(CEND)]}`, theLineNumber, line[eventCol]); 
+        bad(`CaNNOT UNDERSTAND END TIME "${line[columns.get(CEND)]}"`, theLineNumber, line[eventCol]); 
         continue; 
       }
       //console.log(`Line ${theLineNumber}: theHour: ${theHour}:${theMin}:${theTimes.TBA}, theEndHour: ${theEndHour}:${theEndMin}:${theEndTimes.TBA}`);
@@ -1258,7 +1424,7 @@ function generateICal(data, calendarsToExport) {
         theEndMin = theEndTimes.M;
       }
       if (+theEndHour > 23 || +theEndMin >59) {
-        bad(`End time ${line[columns.get(CEND)]} is invalid`, theLineNumber, line[eventCol]); 
+        bad(`INVALID END TIME "${line[columns.get(CEND)]}"`, theLineNumber, line[eventCol]); 
         continue; 
       }
       //console.log(`Line ${theLineNumber}: theEndHour: ${theEndHour}:${theEndMin}:${theEndTimes.TBA}`);
@@ -1294,13 +1460,13 @@ function generateICal(data, calendarsToExport) {
       //console.log(line[columns.get(CEVENT)], line[columns.get(CSTART)], line[columns.get(CDURATION)]);
       const theDurationTimes = getDuration(line, line[columns.get(CDURATION)]);
       if (!theDurationTimes) {
-        bad(`Cannot understand Duration time ${line[columns.get(CDURATION)]}`, theLineNumber, line[eventCol]); 
+        bad(`CANNOT UNDERSTAND DURATION TIME "${line[columns.get(CDURATION)]}"`, theLineNumber, line[eventCol]); 
         continue; 
       }
       //if ( (theDurationTimes.H != TBAhour) && (theDurationTimes != NAhour) ) {
       if (!theDurationTimes.TBA) {
         if (+theDurationTimes.M >= 60) {
-          bad(`Duration minutes (${line[columns.get(CDURATION)]}) must be less than 60.`, theLineNumber, line[eventCol]); 
+          bad(`DURATION MINUTES "${line[columns.get(CDURATION)]}" must be less than 60`, theLineNumber, line[eventCol]); 
           continue; 
         }
         theEndHour = +theHour + +theDurationTimes.H;
@@ -1336,7 +1502,7 @@ function generateICal(data, calendarsToExport) {
       theEndMin -= 60;
     }
     if (+theEndHour >= 24) {
-      if (!warnUserOrCancel(`Event on line ${theLineNumber} cannot span midnight! ${theEvent}, ${theHour}`)) {
+      if (!warnUserOrCancel(`Line ${theLineNumber}: EVENT ON  CANNOT SPAN MIDNIGHT! "${theEvent}" at "${theHour}"`)) {
         text = null;
         return null;
       }
@@ -1346,21 +1512,23 @@ function generateICal(data, calendarsToExport) {
 
     
     if ( (+theEndHour < +theHour) || ((+theEndHour == +theHour) && (+theEndMin <= +theMin)) ) {
-      if (!warnUserOrCancel(`Event ( ${theEvent}) on line ${theLineNumber} ends before it starts! (${theHour}:${theMin}, ${theEndHour}:${theEndMin})`)) {
+      if (!warnUserOrCancel(`Line ${theLineNumber}: Event ends before it starts! "${theEvent}" from "${theHour}:${theMin}" to "${theEndHour}:${theEndMin}"`)) {
         text = null; // TODO is this needed?
         return null;
       }
     }
       
-    theEndHour = String(theEndHour).padStart(2, '0'); // TODO is this necessary? convHourUTC does this
-    theEndMin = String(theEndMin).padStart(2, '0');
-
-
     // Get highwater time
     const highwater = columns.has(CHW) ? line[columns.get(CHW)] || '' : ''; // Guard against empty cell
    
     // Print the record
-    text += printICAL(DTSTAMP, theDay, theMonth, theYear, theHour, theMin, theEndHour, theEndMin, thePrefix, theEvent, highwater);
+    text += printICAL(DTSTAMP, 
+                      String(theDay), String(theMonth), String(theYear),
+                      String(theHour).padStart(2, '0'), String(theMin).padStart(2, '0'),
+                      String(theEndHour).padStart(2, '0'), String(theEndMin).padStart(2, '0'),
+                      thePrefix, theEvent, String(highwater));
+    // For testing
+    console.log(`+++EVENT ${theEvent} ${theDay}/${theMonth}/${theYear} ${theHour.padStart(2, '0')}:${theMin.padStart(2, '0')}-${theEndHour.padStart(2, '0')}:${theEndMin.padStart(2, '0')}`);
   }
 
   text += printEOCAL();
@@ -1584,39 +1752,6 @@ function openICalWindow(calendarsToExport, iCal) {
   newWindow.addEventListener('pagehide', () => URL.revokeObjectURL(link.href));
 }
 
-
-const OKCancel = '\n(Press OK to continue or Cancel to abort)';
-/**
- * Warn user and log
- * @param msg The alert message
- * @return true if user wants to continue, else false
- */
-function warnUserOrCancel(msg) {
-  console.warn(msg);
-  //alert(msg);
-  return confirm(msg + OKCancel);
-}
-
-
-/**
- * Warn about bad record in the spreadsheet
- * @param msg The error message
- * @param lno The number of the line on which the error was found
- * @param evt The name of the event
- */
-function bad(msg, lno, evt) {
-  const message = evt ? 
-      `BAD RECORD: ${msg} on line ${lno} for event ${evt} so ignoring this line.` :
-      `BAD RECORD: ${msg} on line ${lno} so ignoring this line.` ;
-  console.warn(message);
-  console.trace(message);
-  if (confirm(message)) {
-    return;
-  } else {
-    alert("You've have cancelled the run");
-    throw new AbortError('Run aborted');
-  }
-}
 
 /*
 TODO Bugs and possible improvements.
