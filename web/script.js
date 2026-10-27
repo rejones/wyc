@@ -142,10 +142,11 @@ let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 
 // Regular expressions
 const TBA_PATT = /^(TBA|TBC|N\/?A|-)$/i;                   // TBA, tbc, N/A etc 
-//const NA_PATT = /^(N\/?A|-$)/i;                      // N/A or NA Could strengthen with ^$
-const TIME_PATT = /^(\d\d?)[:.h]?(\d\d)(?:[:.]?\d\d)?\s*(am|pm)?\.?$/i;                   // A time such as 9:30, 12.15, 2h00 or 1100 and optional seconds
+//const TIME_PATT = /^(\d\d?)[:.h]?(\d\d)(?:[:.]?\d\d)?\s*(am|pm)?\.?$/i;                   // A time such as 9:30, 12.15, 2h00 or 1100 and optional seconds
+//const ANY_TIME_PATT = /^(\d\d?[:.h]?\d\d(?:[:.]?\d\d)?\s*(?:am|pm)?|TB[AC]|N\/?A|-)$/i;  // A time or TBA or N/A etc 
+const TIME_PATT     = /^(\d\d?)(?:[.,:h]?(\d\d)(?:[.,:]?\d\d)?)?(?:\s*(am|pm))?$/i;
+const ANY_TIME_PATT = /^(\d\d?[:.h]?(\d\d(?:[:.]?\d\d)?)?\s*(?:am|pm)?|TB[AC]|N\/?A|-)$/i;  // A time or TBA or N/A etc 
 const DURATION_PATT = /^(\d\d?)(?:h|[h:.](\d\d)(?:[:.]?\d\d)?)?$/;        // A duration as 1, 2:30, 3.15, 4h or 2h00 but not 1100
-const ANY_TIME_PATT = /^(\d\d?[:.h]?\d\d(?:[:.]?\d\d)?\s*(?:am|pm)?|TB[AC]|N\/?A|-)$/i;  // A time or TBA or N/A etc 
 const DATE_PATT = /^(\d\d?)[-\/. ](\d\d?)[-\/. ](\d{2,4})$/;   // A date such as 17/10/2026 or 1.6.26 
 const REV_DATE_PATT = /^(\d\d\d\d)[-\/. ](\d\d?)[-\/. ](\d\d)$/;   // A date such as 2026/10/19 or 26.6.19 
 const ORDINAL_DAY_PATT = /^(\d\d?)(st|nd|rd|th)?$/i; // Ordinal day eg 12th
@@ -216,7 +217,7 @@ const OKCancel = '\n(Press OK to continue or Cancel to abort)';
  * @param msg The alert message
  * @return true if user wants to continue, else false
  */
-function warnUserOrCancel(msg) {
+function warnUserOrCancel(msg) { // TODO msg should include only line[eventCol] not the whole line
   console.warn(msg);
   //alert(msg);
   return confirm(msg + OKCancel);
@@ -234,7 +235,7 @@ function bad(msg, lno, evt) {
       `Line ${lno}: ${msg} so ignoring this line.\n\t${evt}` :
       `Line ${lno}: ${msg} so ignoring this line.` ;
   console.warn(message);
-  console.trace(message);
+  console.trace(message);  // TODO in production, don't need trace; evt should almost always be line[eventCol]
   if (confirm(message)) {
     return;
   } else {
@@ -1307,7 +1308,6 @@ function generateICal(data, calendarsToExport) {
       if (/^\d\d?$/.test(lineMonth)) {
         theMonth =  line[monthCol];
         if (theMonth < 1 || theMonth > 12) {
-          //bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, theLineNumber, line[eventCol]);
           bad(`INVALID MONTH "${line[monthCol]}"`, theLineNumber, line[eventCol]);
           continue;
         }
@@ -1323,7 +1323,6 @@ function generateICal(data, calendarsToExport) {
           continue;
         }
         if (theMonth < 1 || theMonth > 12) {
-          //bad(`Invalid month ${theMonth} ${lineMonth} ${line[monthCol]}`, theLineNumber, line[eventCol]);
           bad(`INVALID MONTH "${line[monthCol]}"`, theLineNumber, line[eventCol]);
           continue;
         }
@@ -1431,7 +1430,8 @@ function generateICal(data, calendarsToExport) {
     }
       */
 
-    if (theTimes.TBA) {
+    let hasTBA = theTimes.TBA;
+    if (hasTBA) {
       theHour = TBAhour;
       theMin = 0;
       theEndHour = TBAend_hour;
@@ -1520,7 +1520,6 @@ function generateICal(data, calendarsToExport) {
           bad(`CANNOT UNDERSTAND DURATION TIME "${line[columns.get(CDURATION)]}"`, theLineNumber, line[eventCol]); 
           continue; 
         }
-        //if ( (theDurationTimes.H != TBAhour) && (theDurationTimes != NAhour) ) {
         if (!theDurationTimes.TBA) {
           if (+theDurationTimes.H === 0 && +theDurationTimes.M === 0) {
             bad(`DURATION "${line[columns.get(CDURATION)]}" MUST BE GREATER THAN 0`, theLineNumber, line[eventCol]); 
@@ -1549,7 +1548,7 @@ function generateICal(data, calendarsToExport) {
     }
 
     // Event with multiple races
-    if (!hasEnd && !hasDuration) {
+    if (!hasEnd && !hasDuration && !hasTBA) {
       // assume more than one race if event string includes 
       // more than one separate number, and allow an extra hour 
       theEndHour = +theHour + ( /\d\D+\d/.test(theEvent)
@@ -1573,7 +1572,11 @@ function generateICal(data, calendarsToExport) {
       theEndMin = '59';
     }
     if ( (+theEndHour < +theHour) || ((+theEndHour == +theHour) && (+theEndMin <= +theMin)) ) {
-      bad(`Line ${theLineNumber}: EVENT ENDS BEFORE IT STARTS!\n\t${theEvent} from ${theHour}:${theMin} to ${theEndHour}:${theEndMin}`, theLineNumber, line[eventCol]);
+      bad(`Line ${theLineNumber}: EVENT ENDS BEFORE IT STARTS!\n\tFrom ${theHour}:${theMin} to ${theEndHour}:${theEndMin}`, theLineNumber, line[eventCol]);
+      continue;
+    }
+    else if ( (+theEndHour == +theHour)  && (+theEndMin == +theMin)) ) {
+      bad(`Line ${theLineNumber}: EVENT ENDS WHEN IT STARTS!\n\tFrom ${theHour}:${theMin} to ${theEndHour}:${theEndMin}`, theLineNumber, line[eventCol]);
       continue;
     }
       
