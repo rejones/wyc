@@ -1,4 +1,4 @@
-// script.js
+//// script.js
 
 /**
  * The xl2cal system converts an event schedule (typically, the Whitstable
@@ -12,7 +12,7 @@
  * See comments below about peculiarities of Excel formats, etc.
  *
  * @author Richard Jones
- * @copyright Richard Jones, 2023
+ * @copyright Richard Jones, 2023-present
  * https://github.com/rejones/wyc/web
  */
 
@@ -33,6 +33,8 @@ limitations under the License.
 */
 
 'use strict';
+
+const LOGGING = 0;             // 0 = no logging
 
 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Weds'];
 const monthNames = ['January','February','March','April','May','June','July','August',
@@ -124,9 +126,6 @@ const ALERT = 2;     // 2 hours warning
 const TBAhour = 0;             // so set the period to be 00.00 - 23.00
 const TBAend_hour = 23;
 const TBAstring = ' (times TBC)'; // string to add to TBA events
-// Not Applicable times
-//const NAhour = 0;              // so set the period to be 00.00 - 23.00
-//const NAend_hour = 23;
 
 const T = 'T';
 const Z = 'Z';      // 'Z' means UTC rather than local time
@@ -141,16 +140,16 @@ let DEFAULT_EXTENSION_HOUR = DEFAULT_DEFAULT_EXTENSION_HOUR;
 let DEFAULT_DURATION_MIN = DEFAULT_DEFAULT_DURATION_MIN;
 
 // Regular expressions
-const TBA_PATT = /^(TBA|TBC|N\/?A|-)$/i;                   // TBA, tbc, N/A etc 
-//const TIME_PATT = /^(\d\d?)[:.h]?(\d\d)(?:[:.]?\d\d)?\s*(am|pm)?\.?$/i;                   // A time such as 9:30, 12.15, 2h00 or 1100 and optional seconds
+const TBA_PATT = /^(TBA|TBC|N\/?A|-)$/i;                              // TBA, tbc, N/A etc 
+//const TIME_PATT = /^(\d\d?)[:.h]?(\d\d)(?:[:.]?\d\d)?\s*(am|pm)?\.?$/i;                  // A time such as 9:30, 12.15, 2h00 or 1100 and optional seconds
 //const ANY_TIME_PATT = /^(\d\d?[:.h]?\d\d(?:[:.]?\d\d)?\s*(?:am|pm)?|TB[AC]|N\/?A|-)$/i;  // A time or TBA or N/A etc 
 const TIME_PATT     = /^(\d\d?)(?:[.,:h]?(\d\d)(?:[.,:]?\d\d)?)?(?:\s*(am|pm))?$/i;
 const ANY_TIME_PATT = /^(\d\d?[:.h]?(\d\d(?:[:.]?\d\d)?)?\s*(?:am|pm)?|TB[AC]|N\/?A|-)$/i;  // A time or TBA or N/A etc 
-const DURATION_PATT = /^(\d\d?)(?:h|[h:.](\d\d)(?:[:.]?\d\d)?)?$/;        // A duration as 1, 2:30, 3.15, 4h or 2h00 but not 1100
-const DATE_PATT = /^(\d\d?)[-\/. ](\d\d?)[-\/. ](\d{2,4})$/;   // A date such as 17/10/2026 or 1.6.26 
-const REV_DATE_PATT = /^(\d\d\d\d)[-\/. ](\d\d?)[-\/. ](\d\d)$/;   // A date such as 2026/10/19 or 26.6.19 
-const ORDINAL_DAY_PATT = /^(\d\d?)(st|nd|rd|th)?$/i; // Ordinal day eg 12th
-const INTEGER_PATT = /^\d+$/;                        // An integer
+const DURATION_PATT = /^(\d\d?)(?:h|[h:.](\d\d)(?:[:.]?\d\d)?)?$/;    // A duration as 1, 2:30, 3.15, 4h or 2h00 but not 1100
+const DATE_PATT = /^(\d\d?)[-\/. ](\d\d?)[-\/. ](\d{2,4})$/;          // A date such as 17/10/2026 or 1.6.26 
+const REV_DATE_PATT = /^(\d\d\d\d)[-\/. ](\d\d?)[-\/. ](\d\d)$/;      // A date such as 2026/10/19 or 26.6.19 
+const ORDINAL_DAY_PATT = /^(\d\d?)(st|nd|rd|th)?$/i;                  // Ordinal day eg 12 or 12th
+const INTEGER_PATT = /^\d+$/;                                         // An integer
 
 
 // Spreadsheet data
@@ -177,6 +176,7 @@ class AbortError extends Error {
     this.name = "AbortError";
   }
 }
+
 
 // Capture all otherwise uncaught errors
 window.onerror = function (evt, source, lineno, colno, error) {
@@ -217,7 +217,7 @@ const OKCancel = '\n(Press OK to continue or Cancel to abort)';
  * @param msg The alert message
  * @return true if user wants to continue, else false
  */
-function warnUserOrCancel(msg) { // TODO msg should include only line[eventCol] not the whole line
+function warnUserOrCancel(msg) { 
   console.warn(msg);
   //alert(msg);
   return confirm(msg + OKCancel);
@@ -235,7 +235,7 @@ function bad(msg, lno, evt) {
       `Line ${lno}: ${msg} so ignoring this line.\n\t${evt}` :
       `Line ${lno}: ${msg} so ignoring this line.` ;
   console.warn(message);
-  console.trace(message);  // TODO in production, don't need trace; evt should almost always be line[eventCol]
+  //console.trace(message);  // in production, don't need trace; evt should almost always be line[eventCol]
   if (confirm(message)) {
     return;
   } else {
@@ -325,6 +325,7 @@ function dropHandler(ev) {
   }
 }
 
+
 /**
  * Handle file dragged onto landing site
  * @param {Event} ev - The event
@@ -401,7 +402,7 @@ function loadFile(file) {
         sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
   
-        checkSheetSize(sheet, sheetName); // Check that this sheet is a reasonable size
+        checkSheetSize(sheet, sheetName);                          // Check that this sheet is a reasonable size
         jsonData = XLSX.utils.sheet_to_json(sheet, options);
         replaceSheetGroup();
         addSpreadsheetHeading();
@@ -427,7 +428,7 @@ function loadFile(file) {
           try {
             sheetName = event.target.value;
             const sheet = workbook.Sheets[sheetName];
-            checkSheetSize(sheet, sheetName); // Check that this sheet is a reasonable size
+            checkSheetSize(sheet, sheetName);                     // Check that this sheet is a reasonable size
             jsonData = XLSX.utils.sheet_to_json(sheet, options);
             renderTable(jsonData);
           }
@@ -444,12 +445,12 @@ function loadFile(file) {
         div.appendChild(label);
         div.appendChild(select);
         const sheetChooser = document.getElementById("sheet-names");
-        sheetChooser.replaceChildren(div);   // Replace any previous div
+        sheetChooser.replaceChildren(div);                       // Replace any previous div
   
         // Assume the first sheet initially
         sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        checkSheetSize(sheet, sheetName); // Check that this sheet is a reasonable size
+        checkSheetSize(sheet, sheetName);                        // Check that this sheet is a reasonable size
         jsonData = XLSX.utils.sheet_to_json(sheet, options);
         // Clear any previous column selections
         renderTable(jsonData);
@@ -533,7 +534,7 @@ function renderTable(data) {
     
     //console.log(row);
     for (const cell of row) {
-      //console.log(cell, cell%1, typeof cell);
+      if (LOGGING > 1) console.log(cell, cell%1, typeof cell);
       // Convert cell value to string
       let cellValue = cell == undefined ? '' : String(cell);
   
@@ -541,30 +542,12 @@ function renderTable(data) {
       // Excel serial dates and times are represented as a real number.
       // The integral part represents the date by the number of days since 1 Jan 1900;
       // the fractional part represents the time as a fraction of 24 hours.
-      // With 'cellStyles: true', 
-      // dates and times are exported as Date objects.
+      // With 'cellStyles: true', dates and times are exported as Date objects.
       // However, this seems very fragile as it is dependant of very precise
       // formatting in Excel.
 
-      // not used anymore
-      /*
       if (cell instanceof Date) {
-        console.log(`Found an excelDate on row ${row}: ${cell}, ${cell%1}, ${typeof cell}`);
-        // Try to tidy incomplete Excel values
-        if (cell.getFullYear() >= 1900 && cell.getHours()==0 && cell.getMinutes()==0) { // Looks like a date
-          cellValue = `${dayNames[cell.getDay()]} ${cell.getDate()} ${monthNames[cell.getMonth()]}`;
-          const year = cell.getFullYear();
-          if (year > 1904) { // Otherwise, user probably didn't specify year so likely to be 1899 or 1903
-            cellValue = cellValue + ` ${year}`;
-          }
-        }
-        else { // Probably a time
-          cellValue = `${f(cell.getHours())}:${f(cell.getMinutes())}`;
-        }
-      }
-      */
-      if (cell instanceof Date) {
-        //console.log(`Found an excelDate on row ${row}: ${cell}, ${cell%1}, ${typeof cell}`);
+        if (LOGGING > 1) console.log(`Found an excelDate on row ${row}: ${cell}, ${cell%1}, ${typeof cell}`);
         // SheetJS can be a fraction of a millisecond short (10:00 comes out as 09:59:59.999),
         // so round to the nearest minute before reading the hours and minutes
         const d = new Date(Math.round(cell.getTime() / 60000) * 60000);
@@ -590,17 +573,11 @@ function renderTable(data) {
             const hours = Math.floor(cell);
             const minutes = Math.round((cell - hours) * 100);
             if (minutes < 60) { // looks like a time
-              //cellValue = `${hours}.${f(minutes)}`;
-              cellValue = `${hours}.${minutes}`;
+              cellValue = `${hours}.${f(minutes)}`;
             }
           }
           else {
             // Assume it's an Excel time
-            /*
-            const excelTime = cell % 1; 
-            const hours = Math.floor(excelTime * 24);
-            const minutes = Math.round(((excelTime * 24) % 1) * 60);
-            */
             const totalMinutes = Math.round((cell % 1) * 1440);
             const hours = Math.floor(totalMinutes / 60) % 24;
             const minutes = totalMinutes % 60;
@@ -608,7 +585,6 @@ function renderTable(data) {
           }
         }
         else if (cell > JANUARY_1_2020) { // Assume it's a date after 1 Jan 2020
-          //const date = new Date(Date.UTC(0, 0, cell-1));
           const date = new Date(Date.UTC(0, 0, Math.floor(cell-1)));
           if (!isNaN(date.getFullYear())) {
             cellValue = date.toDateString();
@@ -616,19 +592,6 @@ function renderTable(data) {
         }
       }
 
-      /*
-      else {
-        let matchDate;
-        // Defend against regex DOS attacks, otherwise trailing spaces is polynomial
-        //if (cell && (matchDate = cell.trim().match(/^(\d\d?)\/(\d\d?)\/(\d{2,4})$/))) {
-        if (cell && (matchDate = cell.trim().match(DATE_PATT))) { 
-          // Looks like a date.
-          // Excel default format seems to be m/d/yy but we want to display and use d/m/yy
-          cellValue = `${matchDate[2]}/${matchDate[1]}/${matchDate[3]}`;
-        }
-      }
-      */
-          
       const td = document.createElement('td');
       td.textContent = cellValue;        // never parsed as HTML
       tr.appendChild(td);
@@ -813,7 +776,7 @@ function exportSelect() {
 function exportCalendar() {
   // First, search the spreadsheet for calendars, if any
   calendarsFound = findCalendars();
-  console.log(calendarsFound, calendarsFound.size);
+  if (LOGGING > 0) console.log(calendarsFound, calendarsFound.size);
   if (calendarsFound.size > 0) {
     // If any found, ask which calendars to use
     selectCalendars(calendarsFound);
@@ -932,7 +895,7 @@ function parseDate(rowDate) {
   // First, try Excel Date format which is read as a number
   if (!isNaN(rowDate)) {
     // Try converting from Excel date to JS date
-    console.log(`rowDate (${rowDate}) is a number (line ${theLineNumber}`);
+    if (LOGGING > 0) console.log(`rowDate (${rowDate}) is a number (line ${theLineNumber}`);
     if (rowDate < JANUARY_1_2020) {
       if (!warnUserOrCancel(`Line ${theLineNumber}: "${rowDate}" does not look like a date.`)) {
         // TODO If user accepts, then they also get a year differs warning with a year interpreted
@@ -943,7 +906,7 @@ function parseDate(rowDate) {
     }
       
     const date = new Date(Date.UTC(0, 0, rowDate -1));
-    console.log(date);
+    if (LOGGING > 0) console.log(date);
     if (isNaN(date.getFullYear())) {
       //console.warn(`parseDate returns null! for ${rowDate}`);
       return null;
@@ -997,12 +960,12 @@ function parseDate(rowDate) {
                          .filter(x => !isWeekDay(x))    // remove any weekday names
                          .map(it => it.toUpperCase());  // make all upper case
                          // remainders contains month-names, cardinal numbers, junk
-  console.log('ordinals ', ordinals);
-  console.log('remainder ', remainder);
+  if (LOGGING > 0) console.log('ordinals ', ordinals);
+  if (LOGGING > 0) console.log('remainder ', remainder);
 
   // gather ordinal days
   let days = ordinals.map(t => t.match(/^\d\d?/)[0]);   // guaranteed that all elements match
-  console.log('days', days);
+  if (LOGGING > 0) console.log('days', days);
   if (days.length > 1)
     return null;                                        // Too many days found 
   let theDay = (days.length == 1) ? days[0]             // we have the DAY
@@ -1011,13 +974,13 @@ function parseDate(rowDate) {
 
   // look for a single month
   const months = remainder.filter(isMonth);              // get any months
-  console.log('months', months);
+  if (LOGGING > 0) console.log('months', months);
   if (months.length != 1)                                // Either no month or more than 1!
     return null;
   const theMonth = months[0];                            // we have the MONTH
 
   remainder = remainder.filter(x => !isMonth(x));        // remove any months
-  console.log('remainder without months', remainder);
+  if (LOGGING > 0) console.log('remainder without months', remainder);
   // remainders contains cardinal numbers, junk
 
   // look for a year as yyyy
@@ -1029,14 +992,14 @@ function parseDate(rowDate) {
             break;
     default: return null;                               // too many years
   }
-  remainder = remainder.filter(y => !/\b\d\d\d\d\b/.test(y)); // Remove 4-digit years 
+  remainder = remainder.filter(y => !/\b\d\d\d\d\b/.test(y));      // Remove 4-digit years 
   // remainders contains non 4-digit cardinal numbers, junk
 
   // might have 2 1- or 2-digit numbers, e.g. from an input 10 Jan 26
   let numbers = remainder.filter(y => y.match(/\b\d\d?\b/));       // 1- or 2-digit numbers
-  console.log('2-digit numbers', numbers);
+  if (LOGGING > 0) console.log('2-digit numbers', numbers);
   remainder = remainder.filter(y => !/\b\d\d?\b/.test(y));         // Remove 4-digit years
-  console.log('remainder should be empty', remainder);
+  if (LOGGING > 0) console.log('remainder should be empty', remainder);
   if (remainder.length != 0)                                       // this must be junk
     return null;
 
@@ -1061,36 +1024,7 @@ function parseDate(rowDate) {
 
   return theYear ? [ theDay, theMonth, theYear ] 
                  : [ theDay, theMonth ];
-  
-
-  /*
-  let dayMonthYear = rowDate.split(delimiterRE)
-                     .filter(it => it !== '')              // remove any empty elements
-                     .map(it => it.toUpperCase());         // make all upper case
-                     //.filter(it => !isDay(it));          // remove any day names 
-  console.log('dayMonthYear', dayMonthYear);
-  const years = dayMonthYear
-                .filter (it => yearRE.test(it));         // get any year
-  console.log('years', years);
-  const dayMonth = dayMonthYear
-                   .filter(it => !(yearRE.test(it)));   // remove any year
-  console.log('dayMonth', dayMonth);
-  const days = dayMonth
-               .filter(it => /^\d+(ST|ND|RD|TH)?$/.test(it))    // only day strings 
-               .map(it => it.replace(/(ST|ND|RD|TH)$/,''));    // remove any ordinal characters
-  console.log('days', days);
-  const months = dayMonth.filter(isMonth);              // get any month(s)
-  console.log('months',months);
-  console.log(days[0], months[0], years[0]);
-  if (days.length != 1 || months.length != 1) {                  // must have day and month numbers
-    return null;  
-  }
   // TODO Could check that any weekday given is correct.
-  //console.log(years.length);
-  return years.length ? 
-    [days[0], months[0], years[0]] :
-    [days[0], months[0]];
-  */
 }
 
 
@@ -1108,7 +1042,7 @@ function getTimes(line, time) {
     let theHour = matchTime[1];
     const theMin = matchTime[2] || 0;
     const am_pm = matchTime.slice(-1)[0];                      // the last element
-    console.log('matchTime', matchTime, 'am_pm', am_pm);
+    if (LOGGING > 0) console.log('matchTime', matchTime, 'am_pm', am_pm);
     if (/^PM$/i.test(am_pm) && +theHour != 12) {               // convert to 24 hour clock
       theHour = +theHour + 12;
       if (theHour > 24) {                                      // was a bad time like 16.30pm
@@ -1123,17 +1057,11 @@ function getTimes(line, time) {
         return null;
       }
     }
-    return {H: +theHour, M: +theMin, TBA: false};          // +null returns 0
+    return {H: +theHour, M: +theMin, TBA: false};              // +null returns 0
   }
   else if (time.match(TBA_PATT) || time === '-' || time === '') {
-    //return {H: TBAhour, M: 0, TBA: true};           
     return {TBA: true};           
   }
-  /*
-  else if (time.match(NA_PATT)) { 
-    return {H: NAhour, M: 0, TBA: true};
-  } 
-  */
   else return null;
 }
 
@@ -1149,17 +1077,12 @@ function getDuration(line, time) {
   if (matchTime = time.match(DURATION_PATT)) {
     const theHour = matchTime[1];
     const theMin = matchTime[2] || DEFAULT_DURATION_MIN;  
-    console.log(`getDuration (line ${theLineNumber}): time=${time} H=${theHour} M=${theMin}`);
+    if (LOGGING > 0) console.log(`getDuration (line ${theLineNumber}): time=${time} H=${theHour} M=${theMin}`);
     return {H: +theHour, M: +theMin, TBA: false};
   }
   else if (time.match(TBA_PATT) || time === '-' || time === '') {
     return {H: DEFAULT_DURATION_HOUR, M: DEFAULT_DURATION_MIN, TBA: true};
   }
-  /*
-  else if (time.match(NA_PATT)) { 
-    return {H: DEFAULT_DURATION_HOUR, M: DEFAULT_DURATION_MIN, TBA: true};
-  } 
-  */
   else return null;
 }
 
@@ -1277,7 +1200,7 @@ function generateICal(data, calendarsToExport) {
         continue;
       }
       else {
-        if (warnUserOrCancel(`Ignoring line ${theLineNumber}: Valid start time "${start}" not specified\n\t${line}`)) 
+        if (warnUserOrCancel(`Ignoring line ${theLineNumber}: Valid start time "${start}" not specified\n\t${line[eventCol]}`)) 
           continue;
         else
           return null;
@@ -1329,15 +1252,11 @@ function generateICal(data, calendarsToExport) {
       }
 
       // GET THE DAY NUMBER
-      //theDay = line[columns.get(CDAY)];
       let matchDay;
       if (matchDay = (line[columns.get(CDAY)] || '').match(ORDINAL_DAY_PATT)) {  // Guard against empty cell
         theDay = matchDay[1];
       } else {
-        if (theDay)
-          bad(`CANNOT UNDERSTAND DAY NUMBER "${theDay || ''}"`, theLineNumber, line[eventCol]); 
-        else
-          bad(`CANNOT UNDERSTAND DAY NUMBER`, theLineNumber, line[eventCol]); 
+        bad(`CANNOT UNDERSTAND DAY NUMBER`, theLineNumber, line[eventCol]); 
         continue; 
       }
 
@@ -1347,7 +1266,7 @@ function generateICal(data, calendarsToExport) {
       // parse a date
       const dateCol = columns.get(CDATE);
       if (!line[dateCol]) {
-        bad(`EMPTY DATE "${line[dateCol]}"`, theLineNumber, line[eventCol]);
+        bad(`EMPTY DATE`, theLineNumber, line[eventCol]);
         continue;
       }
       const dayMonthYear = parseDate(line[dateCol]);
@@ -1360,7 +1279,7 @@ function generateICal(data, calendarsToExport) {
       // check that any year value matches the year chosen 
       if ((dayMonthYear.length === 3) &&
           (dayMonthYear[2] != theDefaultYear)) {
-        if (!warnUserOrCancel(`Line ${theLineNumber}: Year "${line[dateCol]}" differs from ${theDefaultYear}\nIs this what you meant?`)) {
+        if (!warnUserOrCancel(`Line ${theLineNumber}: Year "${line[dateCol]}" differs from ${theDefaultYear}\nIs this what you meant?\n\t${line[eventCol]}`)) {
             //text = null;
             return null;
         }
@@ -1395,7 +1314,7 @@ function generateICal(data, calendarsToExport) {
     let theEvent = line[columns.get(CEVENT)];
     if ( !theEvent ) {
       console.warn(`Ignoring line ${theLineNumber} ${line}: no event specified`);
-      if(!warnUserOrCancel(`Ignoring line ${theLineNumber}: no event specified\n\t${line}`)) {
+      if(!warnUserOrCancel(`Ignoring line ${theLineNumber}: no event specified`)) {
         return null;
       }
       continue;
@@ -1415,20 +1334,6 @@ function generateICal(data, calendarsToExport) {
       bad(`CANNOT UNDERSTAND START TIME "${line[columns.get(CSTART)]}"`, theLineNumber, line[eventCol]); 
       continue; 
     }
-
-    /*
-    switch (theHour) {
-      case TBAhour: theEndHour = TBAend_hour;     
-                    theEndMin = 0;
-                    theEvent = theEvent + TBAstring;
-                    break;
-      case NAhour: theEndHour = NAend_hour;
-                   theEndMin = 0;
-                   break;
-      default: theEndHour = +theHour + +DEFAULT_DURATION_HOUR;
-               theEndMin = +DEFAULT_DURATION_MIN;
-    }
-      */
 
     let hasTBA = theTimes.TBA;
     if (hasTBA) {
@@ -1477,30 +1382,6 @@ function generateICal(data, calendarsToExport) {
       }
       //console.log(`Line ${theLineNumber}: theEndHour: ${theEndHour}:${theEndMin}:${theEndTimes.TBA}`);
 
-
-      /* BETTER TO CHECK AFTER WE HAVE A DURATION, IF ANY
-      let matchTime;
-      if (matchTime = line[endCol].match(TIME_PATT)) {
-        if ((+theHour > + matchTime[1]) ||
-            ((+theHour == +matchTime[1]) && (theMin >= +matchTime[2]))) {
-          if (!warnUserOrCancel(`Event on line ${theLineNumber} ${line[eventCol]? line[eventCol] : ''} has mismatched start and end times\n` +
-                `${line[startCol]} and ${line[endCol]}`)) {
-            text = null;
-            return null;
-          }
-        }
-        theEndHour = matchTime[1].padStart(2, '0');
-        theEndMin = matchTime[2];
-        if (theEndHour > 23 || theEndMin >59) {
-          bad(`END TIME ${line[endCol]} IS INVALID`, theLineNumber, line[eventCol]); 
-          continue; 
-        }
-      }
-      else {
-        bad(`CANNOT UNDERSTAND End TIME ${line[endCol]}`, theLineNumber, line[eventCol]); 
-        continue; 
-      }
-      */
     }
 
     // Or may have a Duration
@@ -1509,7 +1390,7 @@ function generateICal(data, calendarsToExport) {
       hasDuration = true;
 
       if (hasEnd) {
-        if (!warnUserOrCancel(`Line ${theLineNumber}: Event end overrides duration\n\t${line}`))
+        if (!warnUserOrCancel(`Line ${theLineNumber}: Event end overrides duration\n\t${line[eventCol]}`))
           return null;
       }
 
@@ -1532,18 +1413,7 @@ function generateICal(data, calendarsToExport) {
           theEndHour = +theHour + +theDurationTimes.H;
           theEndMin = +theMin + +theDurationTimes.M;
         }
-        console.log(`theEnd ${theEndHour}:${theEndMin}, duration ${theDurationTimes.H}:${theDurationTimes.M}`);
-        /*
-        let matchTime;
-        if (matchTime = line[columns.get(CDURATION)].match(DURATION_PATT)) {
-          theEndHour = +theHour + +matchTime[1];
-          theEndMin = matchTime[2] ? +theMin + +matchTime[2] : 0;
-        }
-        else {
-          bad(`CANNOT UNDERSTAND THE DURATION ${line[columns.get(CDURATION)]}`, theLineNumber, line[columns.get(CEVENT)]); 
-          continue; 
-        }
-        */
+        if (LOGGING > 0) console.log(`theEnd ${theEndHour}:${theEndMin}, duration ${theDurationTimes.H}:${theDurationTimes.M}`);
       }
     }
 
@@ -1564,7 +1434,7 @@ function generateICal(data, calendarsToExport) {
       theEndMin -= 60;
     }
     if (+theEndHour >= 24) {
-      if (!warnUserOrCancel(`Line ${theLineNumber}: EVENT SPANS MIDNIGHT!\n\t${theEvent}\n\tEnd changed to 23:59.`)) {
+      if (!warnUserOrCancel(`Line ${theLineNumber}: EVENT SPANS MIDNIGHT!\n\t${line[eventCol]} end changed to 23:59.`)) {
         text = null;
         return null;
       }
@@ -1575,7 +1445,7 @@ function generateICal(data, calendarsToExport) {
       bad(`Line ${theLineNumber}: EVENT ENDS BEFORE IT STARTS!\n\tFrom ${theHour}:${theMin} to ${theEndHour}:${theEndMin}`, theLineNumber, line[eventCol]);
       continue;
     }
-    else if ( (+theEndHour == +theHour)  && (+theEndMin == +theMin)) ) {
+    else if ( (+theEndHour == +theHour)  && (+theEndMin == +theMin) ) {
       bad(`Line ${theLineNumber}: EVENT ENDS WHEN IT STARTS!\n\tFrom ${theHour}:${theMin} to ${theEndHour}:${theEndMin}`, theLineNumber, line[eventCol]);
       continue;
     }
@@ -1589,8 +1459,7 @@ function generateICal(data, calendarsToExport) {
                       String(theHour).padStart(2, '0'), String(theMin).padStart(2, '0'),
                       String(theEndHour).padStart(2, '0'), String(theEndMin).padStart(2, '0'),
                       thePrefix, theEvent, String(highwater));
-    // For testing
-    console.log(`+++EVENT ${theEvent} ${theDay}/${theMonth}/${theYear} ${String(theHour).padStart(2, '0')}:${String(theMin).padStart(2, '0')}-${String(theEndHour).padStart(2, '0')}:${String(theEndMin).padStart(2, '0')}`);
+    if (LOGGING > 0) console.log(`+++EVENT ${theEvent} ${theDay}/${theMonth}/${theYear} ${String(theHour).padStart(2, '0')}:${String(theMin).padStart(2, '0')}-${String(theEndHour).padStart(2, '0')}:${String(theEndMin).padStart(2, '0')}`);
   }
 
   text += printEOCAL();
@@ -1721,15 +1590,6 @@ function printICAL (DTSTAMP, theDay, theMonth, theYear, theStart, theMin,
   const day = theYear.padStart(4, '0') + theMonth.padStart(2, '0') + theDay.padStart(2, '0');
   const start = convHourUTC(theYear, theMonth, theDay, theStart) + theMin + '00';
   const end = convHourUTC(theYear, theMonth, theDay, theEnd) + theEndMin + '00';
-  /*
-  let alarm = start - ALERT;
-  if (alarm < 0) { 
-    warnUserOrCancel(`Alarm set for previous day: ${theEvent}`);
-    alarm = "000000";
-  } else { 
-    alarm = String(alarm).padStart(4, '0');
-  }
-  */
   const uid = crypto.randomUUID(); // Requires https: (or file:) not http:
   const eventText = icsText(thePrefix + summary);
   const entry = 
