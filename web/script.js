@@ -123,8 +123,8 @@ const H = 'H';         // needed for the DEFAULT_DURATION value
 const ALERT = 2;     // 2 hours warning
 
 // To Be Announced times
-const TBAhour = 0;             // so set the period to be 00.00 - 23.00
-const TBAend_hour = 23;
+const TBAhour = 9;             // so set the period to be 99.00 - 18.00
+const TBAend_hour = 18;
 const TBAstring = ' (times TBC)'; // string to add to TBA events
 
 const T = 'T';
@@ -714,8 +714,7 @@ function findCalendars() {
         continue;
       // Replicate patterns for Start time in generateICal
       if ( start.match(TIME_PATT) ||  
-           start.match(TBA_PATT) ||  
-           start.match(NA_PATT) ) {  
+           start.match(TBA_PATT) ) {  
         //console.log(row[columns.get(CEVENT)], row[calCol]);
         if (row[calCol]) {
           calendarsFound.add(row[calCol]);
@@ -1341,6 +1340,7 @@ function generateICal(data, calendarsToExport) {
       theMin = 0;
       theEndHour = TBAend_hour;
       theEndMin = 0;
+      if (LOGGING > 0) console.warn(`Start time TBA: set to ${theHour}:${theMin}-${theEndHour}:${theEndMin}`); 
       theEvent = theEvent + TBAstring;
     }
     else {
@@ -1380,7 +1380,7 @@ function generateICal(data, calendarsToExport) {
         bad(`INVALID END TIME "${line[columns.get(CEND)]}"`, theLineNumber, line[eventCol]); 
         continue; 
       }
-      //console.log(`Line ${theLineNumber}: theEndHour: ${theEndHour}:${theEndMin}:${theEndTimes.TBA}`);
+      if (LOGGING > 0) console.log(`Line ${theLineNumber}: theEndHour: ${theEndHour}:${theEndMin}:${theEndTimes.TBA}`);
 
     }
 
@@ -1479,11 +1479,31 @@ function generateICal(data, calendarsToExport) {
  * @param month The month
  * @param day The day
  * @param hour The hour
+ * @param min The minute
+ * @param sec The seconds
  * @return the hour as UTC, padded to 2 digits
  */
-function convHourUTC(year, month, day, hour) {
-  const dt = new Date(year, month-1, day, hour);
-  return String(dt.getUTCHours()).padStart(2, '0');
+function convHourUTC(year, month, day, hour, min, sec) {
+  const d = new Date(year, month-1, day, hour, min, sec);
+  //return String(dt.getUTCHours()).padStart(2, '0');
+  return String(d.getUTCHours()).padStart(2,'0') + String(d.getUTCMinutes()).padStart(2,'0')
+    + String(d.getUTCSeconds()).padStart(2,'0');
+}
+
+
+/**
+ * Convert year, month, day, hour to UTC.
+ * @param year The year
+ * @param month The month
+ * @param day The day
+ * @param hour The hour
+ * @param min The minute
+ * @return the year as UTC, the month and the day (both padded to 2 digits)
+ */
+function convDayUTC(year, month, day, hour, min) {
+  const d = new Date(year, month-1, day, hour, min);
+  return String(d.getFullYear()) + String(d.getUTCMonth()+1).padStart(2, '0') 
+    + String(d.getUTCDate()).padStart(2, '0');
 }
 
 
@@ -1583,22 +1603,22 @@ function foldLine(line, eol = '\n') {
  */
 function printICAL (DTSTAMP, theDay, theMonth, theYear, theStart, theMin, 
                     theEnd, theEndMin, thePrefix, theEvent, theHighwater) {
-  //console.log(DTSTAMP, theDay, theMonth, theYear, theStart, theMin, theEnd, theEndMin, thePrefix, theEvent, theHighwater);
   const hw = theHighwater === '' ? '' : `, HW=${theHighwater}`;
   const summary = theEvent + hw;
-  // $summary =~ s/.{63}\K/\n /sg; # fold lines longer than 75 octets
-  const day = theYear.padStart(4, '0') + theMonth.padStart(2, '0') + theDay.padStart(2, '0');
-  const start = convHourUTC(theYear, theMonth, theDay, theStart) + theMin + '00';
-  const end = convHourUTC(theYear, theMonth, theDay, theEnd) + theEndMin + '00';
+  const startDay = convDayUTC(theYear, theMonth, theDay, theStart, theMin);
+  const start = convHourUTC(theYear, theMonth, theDay, theStart, theMin, 0);
+  const endDay = convDayUTC(theYear, theMonth, theDay, theEnd, theEndMin);
+  const end = convHourUTC(theYear, theMonth, theDay, theEnd, theEndMin, 0);
   const uid = crypto.randomUUID(); // Requires https: (or file:) not http:
+  if (LOGGING > 0) console.warn(`---${theEvent}: ${startDay}@${start} - ${endDay}@${end}`);
   const eventText = icsText(thePrefix + summary);
   const entry = 
 `BEGIN:VEVENT
 CREATED:${DTSTAMP}${Z}
 UID:${uid}
 DTSTAMP:${DTSTAMP}${Z}
-DTSTART:${day}${T}${start}${Z}
-DTEND:${day}${T}${end}${Z}
+DTSTART:${startDay}${T}${start}${Z}
+DTEND:${endDay}${T}${end}${Z}
 ${foldLine('SUMMARY:' + eventText)}
 BEGIN:VALARM
 TRIGGER:-PT${ALERT}H
