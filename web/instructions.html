@@ -38,10 +38,10 @@
     <li>one event per row, and</li>
   <li> columns specifying:
     <ol>
-      <li>the <em>date</em> of the event 
+      <li>the <strong>date</strong> of the event 
           (events spanning days must be added as separate events),</li>
-      <li>the <em>start time</em> of the event, and</li>
-      <li>a <em>description</em> of the event.
+      <li>the <strong>start time</strong> of the event, and</li>
+      <li>a <strong>description</strong> of the event.
     </ol>
     See section <a href="#columns">Selecting columns for export</a>
     for more detail.</li>
@@ -87,7 +87,8 @@ number of columns is 60.
 </p>
 <p>
   You can set the default duration of events with the <span class="instr-box">Duration</span> box.
-  Times may be hours (e.g. "2") or hours and minutes (e.g. "0:45" or "0.45").
+  Times may be hours (e.g. "2") or hours and minutes (e.g. "0:45",
+  but not a decimal value such as "0.45" as this is ambiguous).
 </p>
 <p>
   If you want all calendar entries to use a common prefix (such as "WYC"),
@@ -129,7 +130,7 @@ number of columns is 60.
       </ul>
       <em>xl2cal</em> will not allow  a <strong>Date</strong> column to be
       selected if a <strong>Day no.</strong> or a <strong>Month</strong> column
-      are, and vice-versa.<br>
+      are selected, and vice-versa.<br>
 
       If days are specified, the <strong>Day no.</strong> column may contain <i>either</i>
       cardinal (e.g. "6") <i>or</i> ordinal (e.g. "6th") numbers.<br>
@@ -180,8 +181,9 @@ These columns are optional and do not need to be selected.
       duration of an event.
       Otherwise, the event will be given the default duration from the 
       <span class="instr-box">Duration</span> box.
-      Acceptable entries include "2", "0:45", "2:30", "2.30", "3h", "3h15"
-      and Excel Time format (see <a href="#errors">Errors</a> below).
+      Acceptable entries include "2", "0:45", "2:30", "3h", "3h15"
+      and Excel Time format (see <a href="#errors">Errors</a> below),
+      but not decimal values such as "2.30" as these are ambiguous.
   </li>
   <li>A <b>Calendar</b> column.<br>
       This is intended to allow separate calendars to be generated from a
