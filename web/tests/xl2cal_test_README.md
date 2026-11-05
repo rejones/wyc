@@ -24,9 +24,16 @@ Tests `script_b6749e.js` (the version uploaded on 20 Oct 2026). Every row has an
 - **EITHER**: accept correctly, or reject/warn, but never mis-read.
 - **IGNORE**: heading row; no event, no error. **AMBIGUOUS**: informational.
 
-## What I found (370 rows run against the real script code, headless)
+### Results
 
-`xl2cal_test_predicted_results.csv` has every row's predicted outcome. Text cells are exact. For workbook D (real Excel dates/times) I assumed SheetJS formats cells as Excel displays them, e.g. built-in date format 14 as `m/d/yy`. Compare the on-screen table with the "Predicted text received" in Notes.
+`xl2cal_test_predicted_results.csv` has every row's predicted outcome (as determined by Clause). Text cells are exact. For workbook D (real Excel dates/times) Claude assumed SheetJS formats cells as Excel displays them, e.g. built-in date format 14 as `m/d/yy`. Compare the on-screen table with the "Predicted text received" in Notes.
+
+My responses after fixing any bugs are in the are in the Responses column of each spreadsheet.
+
+---
+
+
+### What Claude found (as of 12 October 2026)
 
 **As uploaded: 143 pass, 226 fail, 193 crash.** Five bugs cause nearly all of it. Fixing them gives **313 pass, 56 fail**, and the 56 are parsing leniency or design questions (below).
 
