@@ -54,11 +54,6 @@
   If you do not yet have a start time for an event, 
   use "TBA", "TBC", "NA" or "N/A", all of which are accepted as valid times.
 </p>
-<p>
-NOTE: In order to run at a reasonable speed, <em>xl2cal</em> imposes limits
-on the size of a spreadsheet. The maximum number of rows is 1,000; the maximum
-number of columns is 60.
-</p>
 
 <h3>2. Loading your spreadsheet into xl2cal</h3>
 
@@ -288,11 +283,35 @@ These columns are optional and do not need to be selected.
   </ol>
 </p>
 
-<h3>License</h3>
+<h2>Limitations</h2>
+
 <p>
-Copyright 2023-present <a href="mailto:R.E.Jones+xl2cal@kent.ac.uk?subject=x2cal%20Query">Richard Jones</a>.
-Licensed under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>. 
-<br>
+<em>xl2cal</em> has few limitations but there are some. The may change if there
+is demand.
+</p>
+<ul>
+  <li>It expects an Excel spreadsheet, with filename extension <code>.xlsx</code>.</li>
+  <li>In order to run at a reasonable speed, <em>xl2cal</em> imposes limits
+      on the size of a spreadsheet. The maximum number of rows is 1,000; the maximum
+      number of columns is 60.</li>
+  <li>At the moment, <em>xl2cal</em> does not support events that span more than one
+      day, so don't use it for the Fastnet Race! 
+      Any event specified to span midnight is shortened to end at 23:59.
+  <li>Durations must not be specified as decimal values such as <code>2.50</code>,
+      which are ambiguous: does this mean "two and a half hours"
+      or "two hours and fifty minutes"?</li>
+</ul>
+<p>
+If these restrictions are problematic, please get in touch with
+<a href="mailto:richard.elliott.jones+xl2cal@gmail.com?subject=x2cal%20Query">Richard Jones</a>.
+</p>
+
+<h2>License</h2>
+<p>
+Copyright &copy; 2023-present Richard Jones.
+Licensed under the <a href="https://www.apache.org/licenses/LICENSE-2.0" rel="license">Apache License, Version 2.0</a>. 
+</p>
+<p>
 Source code at <a href="https://github.com/rejones/wyc">github.com/rejones/wyc</a>.
 </p>
   </div>
